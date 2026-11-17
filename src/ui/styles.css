@@ -1,0 +1,837 @@
+/* UB: Хотын Домог — UI загвар.
+   Өнгө: бараан хөх (шөнийн тэнгэр) + алт (монгол хээ) + улаан (бүс, хаалга). */
+
+:root {
+  --ink: #0d141f;
+  --ink-2: #16212f;
+  --panel: rgba(12, 19, 30, 0.86);
+  --line: rgba(217, 164, 65, 0.36);
+  --line-soft: rgba(255, 255, 255, 0.08);
+  --gold: #d9a441;
+  --gold-2: #f0cf82;
+  --red: #c4532b;
+  --text: #f4efe4;
+  --muted: #a9b3c1;
+  --font: 'Montserrat Variable', 'Segoe UI', Roboto, 'Noto Sans', Arial, sans-serif;
+  --mono: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  /* Монгол "алхан хээ" (src/world/textures.js-ийн MEANDER_PATH-тай ижил) */
+  --meander: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='16' viewBox='0 0 30 16'%3E%3Cpath d='M0 1H30M0 15H30M2.5 15V4H12.5V12H7.5V8M27.5 1V12H17.5V4H22.5V8' fill='none' stroke='%23d9a441' stroke-width='1.6' stroke-linecap='square'/%3E%3C/svg%3E");
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+#game-canvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  touch-action: none;
+}
+
+/* ---------- Дэлгэцүүд (эхлэл, түр зогсоох) ---------- */
+
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* Босоо төвлөрүүлэлт: зай хүрэлцвэл голлоно, хүрэлцэхгүй бол дээрээс нь гүйлгэнэ
+   (justify-content: center ашиглавал панелийн дээд хэсэг тасарч, гүйлгэж хүрэхгүй болдог) */
+.screen > :first-child {
+  margin-top: auto;
+}
+
+.screen > :last-child {
+  margin-bottom: auto;
+}
+
+.screen--start {
+  background: radial-gradient(120% 90% at 50% 40%, rgba(8, 12, 20, 0.05), rgba(8, 12, 20, 0.6));
+}
+
+.screen--pause {
+  background: rgba(8, 12, 20, 0.5);
+  backdrop-filter: blur(6px);
+}
+
+.panel {
+  width: min(540px, 100%);
+  flex-shrink: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.ornament {
+  height: 14px;
+  margin: 10px 18px;
+  background: var(--meander) repeat-x center / auto 100%;
+  opacity: 0.85;
+}
+
+.panel-body {
+  padding: 6px 28px 10px;
+  text-align: center;
+}
+
+.olzii {
+  display: block;
+  width: 58px;
+  height: 58px;
+  margin: 4px auto 8px;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.olzii-band {
+  stroke: var(--gold);
+  stroke-width: 8;
+}
+
+.olzii-line {
+  stroke: var(--ink);
+  stroke-width: 2.4;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(30px, 7vw, 44px);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.title-ub {
+  color: var(--gold);
+}
+
+.tagline {
+  margin: 10px auto 14px;
+  max-width: 36ch;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.badge {
+  display: inline-block;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--gold-2);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0 4px;
+}
+
+.actions--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.btn {
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease, opacity 0.12s ease;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--gold-2);
+  outline-offset: 3px;
+}
+
+.btn--primary {
+  min-width: 220px;
+  padding: 14px 28px;
+  border: none;
+  background: linear-gradient(180deg, #e7b955, #c48f2e);
+  color: #1a1206;
+  font-size: 17px;
+  box-shadow: 0 6px 20px rgba(217, 164, 65, 0.28);
+}
+
+.btn--primary:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(217, 164, 65, 0.36);
+}
+
+.btn--primary:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.btn--ghost {
+  padding: 11px 20px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.btn--ghost:hover {
+  background: rgba(217, 164, 65, 0.1);
+}
+
+.error {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(196, 83, 43, 0.6);
+  border-radius: 8px;
+  background: rgba(196, 83, 43, 0.15);
+  color: #ffd9cc;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* ---------- Удирдлагын хүснэгт ---------- */
+
+/* Эхлэлийн дэлгэц: "Явган" | "Машин" хоёр багана */
+.controls-columns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px 26px;
+  margin: 20px auto 0;
+  text-align: left;
+}
+
+@media (min-width: 560px) {
+  .controls-columns {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Түр зогсоох цэс: хэсгүүд доош дараалан */
+.controls-stack {
+  display: grid;
+  gap: 12px;
+  text-align: left;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 6px 12px;
+  font-size: 13px;
+}
+
+.controls-keys {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.controls-label {
+  color: var(--text);
+}
+
+.is-muted {
+  opacity: 0.55;
+}
+
+.controls-subheading {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--gold-2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.controls-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 24px;
+  padding: 2px 7px;
+  border: 1px solid #34465d;
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--ink-2);
+  color: var(--text);
+  font: 700 11.5px/1.5 var(--font);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ---------- Хэл сонгох ---------- */
+
+.lang-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 18px 0 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.segmented {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.segmented button {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: 600 13px var(--font);
+  cursor: pointer;
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--gold);
+  color: #1a1206;
+}
+
+.segmented button:focus-visible {
+  outline: 2px solid var(--gold-2);
+  outline-offset: -2px;
+}
+
+.footnote {
+  margin: 0;
+  color: rgba(244, 239, 228, 0.7);
+  font-size: 12px;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- Түр зогсоох цэс ---------- */
+
+.panel--pause {
+  width: min(480px, 100%);
+}
+
+.pause-title {
+  margin: 4px 0 0;
+  font-size: 26px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+/* Өргөн дэлгэц дээр 2 багана: зүүн — товчлуур ба тохиргоо, баруун — удирдлага */
+@media (min-width: 780px) {
+  .panel--pause {
+    width: min(860px, 100%);
+  }
+
+  .pause-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 32px;
+    align-items: start;
+  }
+
+  .pause-side {
+    padding-left: 32px;
+    border-left: 1px solid var(--line-soft);
+  }
+
+  .pause-side .section-title {
+    margin-top: 6px;
+    padding-top: 0;
+    border-top: none;
+  }
+}
+
+.section-title {
+  margin: 22px 0 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--gold-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.settings {
+  display: grid;
+  gap: 10px;
+  text-align: left;
+  font-size: 14px;
+}
+
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.setting--check {
+  justify-content: flex-start;
+  cursor: pointer;
+}
+
+.setting-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.setting input[type='range'] {
+  width: 140px;
+  accent-color: var(--gold);
+}
+
+.setting input[type='checkbox'] {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--gold);
+}
+
+.setting output {
+  min-width: 2.2em;
+  color: var(--gold-2);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ---------- HUD ---------- */
+
+.hud {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.hud-debug {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  margin: 0;
+  padding: 8px 11px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: rgba(10, 16, 26, 0.62);
+  color: #dfe7f2;
+  font: 600 12px/1.5 var(--mono);
+}
+
+.hud-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 16px;
+  max-width: calc(100% - 32px);
+  padding: 7px 14px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(10, 16, 26, 0.5);
+  backdrop-filter: blur(4px);
+  color: rgba(244, 239, 228, 0.88);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.hud-hint-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hud-hint-item kbd {
+  min-width: 20px;
+  padding: 1px 5px;
+  font-size: 10.5px;
+}
+
+.hud-hint-item kbd:last-of-type {
+  margin-right: 3px;
+}
+
+.hud-look-hint {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  max-width: min(520px, calc(100% - 32px));
+  padding: 10px 16px;
+  transform: translateX(-50%);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(10, 16, 26, 0.72);
+  font-size: 14px;
+  text-align: center;
+  /* Pointer lock хэдхэн мс-д асдаг тул сануулга шууд анивчихгүй байхаар хоцроож харуулна */
+  animation: fade-in 0.3s ease 0.6s both;
+}
+
+.toast {
+  position: fixed;
+  top: 22px;
+  left: 50%;
+  z-index: 30;
+  max-width: calc(100% - 32px);
+  padding: 9px 16px;
+  transform: translate(-50%, -10px);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(12, 19, 30, 0.9);
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.toast.is-visible {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+
+/* ---------- Машин: сануулга, үзүүлэлтийн карт, хурд хэмжигч ---------- */
+
+.hud-prompt {
+  position: absolute;
+  bottom: 64px;
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  transform: translateX(-50%);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(10, 16, 26, 0.78);
+  font-size: 14px;
+  font-weight: 700;
+  animation: fade-in 0.2s ease both;
+}
+
+.hud-prompt kbd {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: #1a1206;
+}
+
+.vehicle-card {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: min(300px, calc(100% - 32px));
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--gold);
+  border-radius: 10px;
+  background: rgba(10, 16, 26, 0.82);
+  animation: fade-in 0.3s ease both;
+}
+
+.vehicle-card-name {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.vehicle-card-description {
+  margin: 4px 0 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 5px;
+  font-size: 12.5px;
+}
+
+.stat-pips {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.stat-pips i {
+  width: 18px;
+  height: 7px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.stat-pips i.is-on {
+  background: var(--gold);
+}
+
+.speedo {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  min-width: 168px;
+  padding: 10px 16px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: rgba(10, 16, 26, 0.72);
+  backdrop-filter: blur(4px);
+  text-align: right;
+}
+
+.speedo-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.speedo-name {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.speedo-gear {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--gold-2);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.speedo-gear[data-gear='R'] {
+  border-color: rgba(196, 83, 43, 0.8);
+  color: #ff9a7a;
+}
+
+.speedo-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.speedo-value {
+  font-size: 46px;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.speedo-unit {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.speedo-bar {
+  height: 5px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.speedo-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), #f08a3a, var(--red));
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---------- Мини газрын зураг ---------- */
+
+.minimap {
+  position: absolute;
+  bottom: 18px;
+  left: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.minimap-canvas {
+  display: block;
+  border: 3px solid var(--gold);
+  border-radius: 50%;
+  background: #1d2734;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.minimap-district {
+  max-width: 220px;
+  padding: 3px 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(10, 16, 26, 0.72);
+  color: var(--gold-2);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.minimap-district:empty {
+  display: none;
+}
+
+/* ---------- Том газрын зураг ---------- */
+
+.screen-map {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  background: #1d2734;
+}
+
+.map-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+.map-header {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  max-width: min(560px, calc(100% - 32px));
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--gold);
+  border-radius: 10px;
+  background: rgba(10, 16, 26, 0.82);
+  pointer-events: none;
+}
+
+.map-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.map-header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* Мини газрын зураг ба доод сануулга давхцахгүй: дунд өргөнтэй дэлгэц дээр сануулгыг нууна */
+@media (max-width: 1180px) {
+  .hud-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .panel-body {
+    padding: 4px 18px 8px;
+  }
+  .minimap-canvas {
+    width: 132px !important;
+    height: 132px !important;
+  }
+  .speedo {
+    min-width: 132px;
+  }
+  .speedo-value {
+    font-size: 34px;
+  }
+  .hud-hint {
+    display: none;
+  }
+  .hud-prompt {
+    bottom: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .toast {
+    transition: none;
+  }
+  .hud-look-hint,
+  .hud-prompt,
+  .vehicle-card {
+    animation: none;
+  }
+}

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="mn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="UB: Хотын Домог — Улаанбаатараас санаа авсан оригинал open-world тоглоом." />
+    <meta name="theme-color" content="#0d141f" />
+    <title>UB: Хотын Домог</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <!-- 3D дүрслэл -->
+    <canvas id="game-canvas" tabindex="-1"></canvas>
+
+    <!-- HUD: тоглох үеийн мэдээлэл -->
+    <div id="hud" class="hud" hidden>
+      <pre id="hud-debug" class="hud-debug" hidden></pre>
+
+      <!-- Мини газрын зураг (доод зүүн буланд) -->
+      <div id="hud-minimap" class="minimap">
+        <span id="minimap-district" class="minimap-district"></span>
+        <canvas id="minimap-canvas" class="minimap-canvas"></canvas>
+      </div>
+      <div id="hud-look-hint" class="hud-look-hint" data-i18n="hud.clickToLook" hidden></div>
+
+      <!-- Машины ойролцоо: "F — Машинд суух" -->
+      <div id="hud-prompt" class="hud-prompt" hidden>
+        <kbd>F</kbd>
+        <span data-i18n="prompt.enterVehicle">Машинд суух</span>
+      </div>
+
+      <!-- Машинд суумагц гарах үзүүлэлтийн карт -->
+      <div id="hud-vehicle-card" class="vehicle-card" hidden>
+        <div id="vehicle-card-name" class="vehicle-card-name"></div>
+        <p id="vehicle-card-description" class="vehicle-card-description"></p>
+        <div id="vehicle-card-stats" class="vehicle-card-stats"></div>
+      </div>
+
+      <!-- Хурд хэмжигч (машин жолоодох үед) -->
+      <div id="hud-speedo" class="speedo" hidden>
+        <div class="speedo-top">
+          <span id="speedo-gear" class="speedo-gear">N</span>
+          <span id="speedo-name" class="speedo-name"></span>
+        </div>
+        <div class="speedo-main">
+          <span id="speedo-value" class="speedo-value">0</span>
+          <span class="speedo-unit" data-i18n="units.kmh">км/ц</span>
+        </div>
+        <div class="speedo-bar"><span id="speedo-fill" class="speedo-fill"></span></div>
+      </div>
+
+      <div id="hud-hint" class="hud-hint"></div>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <!-- Эхлэлийн дэлгэц -->
+    <section id="screen-start" class="screen screen--start" aria-labelledby="game-title">
+      <div class="panel">
+        <div class="ornament" aria-hidden="true"></div>
+        <div class="panel-body">
+          <!-- Өлзий хээ (хялбаршуулсан) -->
+          <svg class="olzii" viewBox="-50 -50 100 100" aria-hidden="true">
+            <g transform="rotate(45)">
+              <path
+                class="olzii-band"
+                d="M10 -26 V26 C10 46 46 10 26 10 H-26 C-46 10 -10 46 -10 26 V-26 C-10 -46 -46 -10 -26 -10 H26 C46 -10 10 -46 10 -26 Z"
+              />
+              <path
+                class="olzii-line"
+                d="M10 -26 V26 C10 46 46 10 26 10 H-26 C-46 10 -10 46 -10 26 V-26 C-10 -46 -46 -10 -26 -10 H26 C46 -10 10 -46 10 -26 Z"
+              />
+            </g>
+          </svg>
+          <h1 id="game-title" class="title">
+            <span class="title-ub">UB:</span>
+            <span data-i18n="game.title">Хотын Домог</span>
+          </h1>
+          <p class="tagline" data-i18n="game.tagline">Хөдөөнөөс ирсэн залуу. Алга болсон ах. Нэг том хот.</p>
+          <span class="badge" data-i18n="game.stage">Үе шат 3 · Хот ба газрын зураг</span>
+
+          <div class="actions">
+            <button id="btn-play" class="btn btn--primary" type="button" disabled>
+              <span id="btn-play-label">Ачаалж байна…</span>
+            </button>
+          </div>
+          <p id="start-error" class="error" role="alert" hidden></p>
+
+          <div id="start-controls" class="controls-columns"></div>
+
+          <div class="lang-row">
+            <span class="lang-label" data-i18n="settings.language">Хэл</span>
+            <div class="segmented" data-lang-switch></div>
+          </div>
+        </div>
+        <div class="ornament" aria-hidden="true"></div>
+      </div>
+      <p class="footnote" data-i18n="game.disclaimer"></p>
+    </section>
+
+    <!-- Том газрын зураг (M) -->
+    <section id="screen-map" class="screen-map" aria-labelledby="map-title" hidden>
+      <canvas id="map-canvas" class="map-canvas"></canvas>
+      <div class="map-header">
+        <h2 id="map-title" data-i18n="map.title">Газрын зураг</h2>
+        <p data-i18n="map.help"></p>
+      </div>
+    </section>
+
+    <!-- Түр зогсоох цэс -->
+    <section id="screen-pause" class="screen screen--pause" aria-labelledby="pause-title" hidden>
+      <div class="panel panel--pause">
+        <div class="ornament" aria-hidden="true"></div>
+        <div class="panel-body pause-layout">
+          <div class="pause-main">
+            <h2 id="pause-title" class="pause-title" data-i18n="pause.title"></h2>
+            <div class="actions actions--stack">
+              <button id="btn-resume" class="btn btn--primary" type="button" data-i18n="pause.resume"></button>
+              <button id="btn-respawn" class="btn btn--ghost" type="button" data-i18n="pause.respawn"></button>
+              <button id="btn-reset-vehicles" class="btn btn--ghost" type="button" data-i18n="pause.resetVehicles"></button>
+            </div>
+
+            <h3 class="section-title" data-i18n="settings.title"></h3>
+            <div class="settings">
+              <label class="setting" for="set-sensitivity">
+                <span data-i18n="settings.sensitivity"></span>
+                <span class="setting-range">
+                  <input id="set-sensitivity" type="range" min="0.2" max="3" step="0.1" />
+                  <output id="set-sensitivity-value" for="set-sensitivity"></output>
+                </span>
+              </label>
+              <label class="setting setting--check">
+                <input id="set-invert" type="checkbox" />
+                <span data-i18n="settings.invertY"></span>
+              </label>
+              <label class="setting setting--check">
+                <input id="set-debug" type="checkbox" />
+                <span data-i18n="settings.showDebug"></span>
+              </label>
+              <div class="setting">
+                <span data-i18n="settings.language"></span>
+                <div class="segmented" data-lang-switch></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pause-side">
+            <h3 class="section-title" data-i18n="pause.controls"></h3>
+            <div id="pause-controls" class="controls-stack"></div>
+          </div>
+        </div>
+        <div class="ornament" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

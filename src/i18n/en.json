@@ -1,0 +1,125 @@
+{
+  "meta": {
+    "name": "English"
+  },
+  "game": {
+    "title": "City Legend",
+    "tagline": "A young man from the countryside. A missing brother. One big city.",
+    "stage": "Stage 3 · City & map",
+    "disclaimer": "Original work. All characters, places and organizations are fictional."
+  },
+  "start": {
+    "loading": "Loading…",
+    "play": "Play",
+    "webglError": "Your browser does not support WebGL. Please use a recent version of Chrome, Edge or Firefox.",
+    "loadError": "The game failed to load. Please reload the page."
+  },
+  "pause": {
+    "title": "Paused",
+    "resume": "Resume",
+    "respawn": "Return to spawn point",
+    "resetVehicles": "Reset vehicles and cones",
+    "controls": "Controls"
+  },
+  "settings": {
+    "title": "Settings",
+    "sensitivity": "Mouse sensitivity",
+    "invertY": "Invert camera Y axis",
+    "showDebug": "FPS & performance info",
+    "language": "Language"
+  },
+  "controls": {
+    "onFoot": "On foot",
+    "driving": "Driving",
+    "move": "Move",
+    "run": "Run",
+    "jump": "Jump",
+    "look": "Look around",
+    "zoom": "Zoom in / out",
+    "pause": "Pause menu",
+    "menu": "Menu",
+    "debug": "Performance info",
+    "physics": "Physics colliders (debug)",
+    "vehicle": "Enter / exit vehicle",
+    "accelerate": "Accelerate",
+    "brakeReverse": "Brake / reverse",
+    "steer": "Steer",
+    "handbrake": "Handbrake",
+    "exitVehicle": "Exit",
+    "upcoming": "Coming in later stages",
+    "interact": "Interact",
+    "map": "Full map",
+    "phone": "Phone",
+    "gamepad": "Gamepad: left stick — move, right stick — camera, A — jump, B/LB — run, Y — enter vehicle, Start — menu",
+    "gamepadDrive": "Gamepad (driving): RT — accelerate, LT — brake/reverse, left stick — steer, RB — handbrake, Y — exit"
+  },
+  "keys": {
+    "mouse": "Mouse",
+    "wheel": "Wheel"
+  },
+  "prompt": {
+    "enterVehicle": "Enter vehicle"
+  },
+  "districts": {
+    "center": "Downtown",
+    "square": "Central Square",
+    "market": "Grand Market",
+    "khoroolol": "East Blocks",
+    "gerNorth": "North Hill",
+    "zaisan": "White Hill",
+    "riverside": "Riverside",
+    "training": "Training Ground",
+    "outskirts": "Outskirts"
+  },
+  "map": {
+    "title": "Map",
+    "help": "Click to set a waypoint · Right-click — clear · Wheel — zoom · Drag to pan · M / Esc — close",
+    "north": "N"
+  },
+  "vehicles": {
+    "hybrid": {
+      "name": "Hybrid",
+      "description": "The city's most common car. A Japanese import — right-hand drive."
+    },
+    "stats": {
+      "speed": "Speed",
+      "handling": "Handling",
+      "durability": "Durability"
+    }
+  },
+  "units": {
+    "kmh": "km/h"
+  },
+  "hud": {
+    "clickToLook": "Click the screen to control the camera (or drag with the mouse)",
+    "gamepadOn": "Gamepad connected",
+    "gamepadOff": "Gamepad disconnected",
+    "respawned": "Returned to the spawn point",
+    "physicsOn": "Physics colliders: on",
+    "physicsOff": "Physics colliders: off",
+    "cannotExit": "No room to get out here",
+    "waypointSet": "Waypoint set — follow the route on the minimap",
+    "waypointCleared": "Waypoint cleared",
+    "arrived": "You have arrived",
+    "vehicleRecovered": "Vehicle flipped back upright",
+    "vehicleReset": "Vehicles and cones reset"
+  },
+  "debug": {
+    "fps": "FPS",
+    "speed": "Speed",
+    "position": "Position",
+    "grounded": "Grounded",
+    "airborne": "Airborne",
+    "drawCalls": "Draw calls",
+    "triangles": "Triangles",
+    "mps": "m/s",
+    "vehicle": "Vehicle",
+    "wheels": "wheels grounded"
+  },
+  "world": {
+    "signTitle": "UB: CITY LEGEND",
+    "signSubtitle": "Training ground",
+    "drivingSignTitle": "DRIVING AREA",
+    "drivingSignSubtitle": "Cone slalom · Jump ramp"
+  }
+}
