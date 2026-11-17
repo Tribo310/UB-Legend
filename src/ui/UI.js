@@ -74,6 +74,7 @@ export class UI {
       hudHint: $('hud-hint'),
       lookHint: $('hud-look-hint'),
       prompt: $('hud-prompt'),
+      promptText: $('hud-prompt-text'),
       debug: $('hud-debug'),
       toast: $('toast'),
       speedo: $('hud-speedo'),
@@ -225,8 +226,20 @@ export class UI {
     this.el.lookHint.hidden = !visible;
   }
 
-  /** "F — Машинд суух" сануулга. */
-  setEnterPrompt(visible) {
+  /**
+   * "F — Машинд суух" / "F — Машин булаах" сануулга.
+   * @param {'enter'|'carjack'|null|false} mode
+   */
+  setEnterPrompt(mode) {
+    const visible = Boolean(mode);
+    if (visible) {
+      const key = mode === 'carjack' ? 'prompt.carjack' : 'prompt.enterVehicle';
+      const text = this.el.promptText;
+      if (text.dataset.i18n !== key) {
+        text.dataset.i18n = key; // Хэл солиход translateDom зөв текстийг тавина
+        text.textContent = t(key);
+      }
+    }
     if (this.el.prompt.hidden === !visible) return;
     this.el.prompt.hidden = !visible;
   }
@@ -357,6 +370,7 @@ export class UI {
       lines.push(player.grounded ? t('debug.grounded') : t('debug.airborne'));
     }
     lines.push(`${t('debug.drawCalls')}: ${info.calls} · ${t('debug.triangles')}: ${info.triangles}`);
+    if (this.game.npc) lines.push(t('debug.npc', this.game.npc.stats));
     element.textContent = lines.join('\n');
   }
 }

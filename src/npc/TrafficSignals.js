@@ -67,12 +67,27 @@ export class TrafficSignals {
     return t < xGreenEnd ? 'green' : t < xGreenEnd + YELLOW ? 'yellow' : 'red';
   }
 
-  /** Ногоон гэрэл хэдэн секунд үлдсэн бэ (ногоон биш бол 0). */
-  remainingGreen(nodeId, axis) {
+  /** Тухайн чиглэлийн ногоон эхэлснээс хойш хэдэн секунд өнгөрсөн бэ (мөчлөг доторх). */
+  sinceGreen(s, axis) {
+    const start = axis === 'z' ? 0 : s.greenZ + YELLOW + ALL_RED;
+    return (s.time - start + s.cycle) % s.cycle;
+  }
+
+  /** Ногоон асах хүртэл хэдэн секунд (одоо ногоон бол 0). Явган хүн гарц эхлэх эсэхээ шийднэ. */
+  timeUntilGreen(nodeId, axis) {
     const s = this.signals.get(nodeId);
-    if (!s || this.state(nodeId, axis) !== 'green') return 0;
-    const greenEnd = axis === 'z' ? s.greenZ : s.greenZ + YELLOW + ALL_RED + s.greenX;
-    return greenEnd - s.time;
+    if (!s) return 0;
+    const since = this.sinceGreen(s, axis);
+    return since < (axis === 'z' ? s.greenZ : s.greenX) ? 0 : s.cycle - since;
+  }
+
+  /** Шар унтарсны дараах "бүгд улаан" үе — уулзвар дээр үлдсэн машин гарч дуусах хугацаа. */
+  isClearing(nodeId, axis) {
+    const s = this.signals.get(nodeId);
+    if (!s) return false;
+    const yellowEnd = (axis === 'z' ? s.greenZ : s.greenX) + YELLOW;
+    const since = this.sinceGreen(s, axis);
+    return since >= yellowEnd && since < yellowEnd + ALL_RED;
   }
 
   /** Асаалттай чийдэнг шинэчилнэ (зөвхөн өөрчлөгдсөн гэрлүүдийг). */

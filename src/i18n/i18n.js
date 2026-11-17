@@ -28,6 +28,13 @@ export function t(key, params) {
   return text;
 }
 
+/** Мөрийн жагсаалт (жишээ нь NPC-ийн хэлэх үгс). Олдохгүй бол монгол хувилбар, тэгээд хоосон. */
+export function tList(key) {
+  let list = resolve(DICTIONARIES[current], key);
+  if (!Array.isArray(list)) list = resolve(DICTIONARIES[FALLBACK], key);
+  return Array.isArray(list) ? list : [];
+}
+
 export function getLanguage() {
   return current;
 }

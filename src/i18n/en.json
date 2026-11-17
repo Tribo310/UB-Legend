@@ -5,7 +5,7 @@
   "game": {
     "title": "City Legend",
     "tagline": "A young man from the countryside. A missing brother. One big city.",
-    "stage": "Stage 3 · City & map",
+    "stage": "Stage 4 · People & traffic",
     "disclaimer": "Original work. All characters, places and organizations are fictional."
   },
   "start": {
@@ -40,7 +40,7 @@
     "menu": "Menu",
     "debug": "Performance info",
     "physics": "Physics colliders (debug)",
-    "vehicle": "Enter / exit vehicle",
+    "vehicle": "Enter / exit vehicle · take a car",
     "accelerate": "Accelerate",
     "brakeReverse": "Brake / reverse",
     "steer": "Steer",
@@ -58,7 +58,8 @@
     "wheel": "Wheel"
   },
   "prompt": {
-    "enterVehicle": "Enter vehicle"
+    "enterVehicle": "Enter vehicle",
+    "carjack": "Take the car"
   },
   "districts": {
     "center": "Downtown",
@@ -80,6 +81,18 @@
     "hybrid": {
       "name": "Hybrid",
       "description": "The city's most common car. A Japanese import — right-hand drive."
+    },
+    "taxi": {
+      "name": "Taxi",
+      "description": "The city's yellow taxi, built on the hybrid — cheap, economical and everywhere."
+    },
+    "suv": {
+      "name": "SUV",
+      "description": "Big, heavy, all-wheel drive. Confident on dirt roads and winter ice — but slow through corners."
+    },
+    "minibus": {
+      "name": "Minibus",
+      "description": "The city's shared minibus. Slow but sturdy, with room for a crowd."
     },
     "stats": {
       "speed": "Speed",
@@ -114,7 +127,17 @@
     "triangles": "Triangles",
     "mps": "m/s",
     "vehicle": "Vehicle",
-    "wheels": "wheels grounded"
+    "wheels": "wheels grounded",
+    "npc": "NPC: {cars} cars · {peds} pedestrians"
+  },
+  "npc": {
+    "bump": ["Hey, watch it!", "What do you think you're doing?", "Look where you're going!", "Quit shoving!", "Ow, my foot!", "Ever heard of “excuse me”?"],
+    "wait": ["Let me through.", "Coming through, please.", "Excuse me, may I pass?", "Out of the way, please."],
+    "flee": ["Oh my god!", "Are you crazy?!", "Slow down!", "Look out!", "Someone's going to get hurt!"],
+    "hit": ["Ow! Where are your eyes?!", "I'm calling the police!", "Ugh, my back…", "Who gave you a license?!", "What are you doing?!"],
+    "honk": ["Beeeep!", "Hey, you're blocking the road!", "Are you moving or not?!", "Get out of the way!"],
+    "carBump": ["Hey! My car!", "Watch where you're driving!", "This car is brand new!", "I hope you're insured!"],
+    "jacked": ["My car!", "Thief! Police!", "Give it back!", "This is a robbery!"]
   },
   "world": {
     "signTitle": "UB: CITY LEGEND",

@@ -14,6 +14,8 @@
 
     <!-- HUD: тоглох үеийн мэдээлэл -->
     <div id="hud" class="hud" hidden>
+      <!-- NPC-ийн яриан хөөс (толгой дээр нь) -->
+      <div id="hud-speech" class="speech-layer" aria-hidden="true"></div>
       <pre id="hud-debug" class="hud-debug" hidden></pre>
 
       <!-- Мини газрын зураг (доод зүүн буланд) -->
@@ -23,10 +25,10 @@
       </div>
       <div id="hud-look-hint" class="hud-look-hint" data-i18n="hud.clickToLook" hidden></div>
 
-      <!-- Машины ойролцоо: "F — Машинд суух" -->
+      <!-- Машины ойролцоо: "F — Машинд суух" / "F — Машин булаах" -->
       <div id="hud-prompt" class="hud-prompt" hidden>
         <kbd>F</kbd>
-        <span data-i18n="prompt.enterVehicle">Машинд суух</span>
+        <span id="hud-prompt-text" data-i18n="prompt.enterVehicle">Машинд суух</span>
       </div>
 
       <!-- Машинд суумагц гарах үзүүлэлтийн карт -->
@@ -76,7 +78,7 @@
             <span data-i18n="game.title">Хотын Домог</span>
           </h1>
           <p class="tagline" data-i18n="game.tagline">Хөдөөнөөс ирсэн залуу. Алга болсон ах. Нэг том хот.</p>
-          <span class="badge" data-i18n="game.stage">Үе шат 3 · Хот ба газрын зураг</span>
+          <span class="badge" data-i18n="game.stage">Үе шат 4 · Хотын хүн ам ба хөдөлгөөн</span>
 
           <div class="actions">
             <button id="btn-play" class="btn btn--primary" type="button" disabled>

@@ -103,6 +103,7 @@ export class TrafficNetwork {
         crosswalk: paved && node.edges.length >= 3 && !node.roundabout,
         reservedBy: null,
         reservedTime: 0,
+        inside: new Set(), // Яг одоо уулзвар дотор (холбогч дээр) яваа машинууд
         lanesIn: [],
         lanesOut: [],
       });

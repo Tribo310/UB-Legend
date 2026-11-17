@@ -70,11 +70,13 @@ export function createCarVisual(scene, typeId, capacity) {
     scene.add(mesh);
     return mesh;
   };
+  const paintMesh = make(paint, paintMaterial, `Npc-${typeId}-paint`);
+  paintMesh.setColorAt(0, WHITE); // Машин бүрийн өнгө (instanceColor) — эхнээс нь үүсгэнэ
   return {
     typeId,
     def,
     capacity,
-    paint: make(paint, paintMaterial, `Npc-${typeId}-paint`),
+    paint: paintMesh,
     details: make(details, detailMaterial, `Npc-${typeId}-details`),
     halfLength: def.size.length / 2,
     halfWidth: def.size.width / 2,
