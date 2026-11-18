@@ -1,6 +1,7 @@
 // Хэрэглэгчийн интерфэйс (DOM): эхлэлийн дэлгэц, түр зогсоох цэс, HUD, мэдэгдэл (toast),
 // машины хурд хэмжигч ба үзүүлэлтийн карт.
 // Бүх текст i18n-ээс ирнэ — хэл солиход renderTexts() дахин зурна.
+import { formatMoney } from '../core/Progress.js';
 import { getLanguage, getLanguageName, LANGUAGES, onLanguageChange, t } from '../i18n/i18n.js';
 import { MapUI } from './MapUI.js';
 
@@ -10,6 +11,7 @@ const FOOT_CONTROLS = [
   { keys: ['Shift'], label: 'controls.run' },
   { keys: ['Space'], label: 'controls.jump' },
   { keys: ['F'], label: 'controls.vehicle' },
+  { keys: ['E'], label: 'controls.interact' },
   { keys: ['M'], label: 'controls.map' },
   { keys: ['@keys.mouse'], label: 'controls.look' },
   { keys: ['@keys.wheel'], label: 'controls.zoom' },
@@ -27,12 +29,10 @@ const DRIVE_CONTROLS = [
 const DEBUG_CONTROLS = [
   { keys: ['F3'], label: 'controls.debug' },
   { keys: ['F4'], label: 'controls.physics' },
+  { keys: ['F8'], label: 'controls.wantedDebug' },
 ];
 
-const UPCOMING_CONTROLS = [
-  { keys: ['E'], label: 'controls.interact' },
-  { keys: ['Tab'], label: 'controls.phone' },
-];
+const UPCOMING_CONTROLS = [{ keys: ['Tab'], label: 'controls.phone' }];
 
 const HUD_HINT_FOOT = [
   { keys: ['W', 'A', 'S', 'D'], label: 'controls.move' },
@@ -74,7 +74,27 @@ export class UI {
       hudHint: $('hud-hint'),
       lookHint: $('hud-look-hint'),
       prompt: $('hud-prompt'),
+      wanted: $('hud-wanted'),
+      arrest: $('hud-arrest'),
+      arrestFill: $('hud-arrest-fill'),
+      busted: $('hud-busted'),
+      promptKey: $('hud-prompt-key'),
       promptText: $('hud-prompt-text'),
+      money: $('hud-money'),
+      objective: $('hud-objective'),
+      objectiveTitle: $('objective-title'),
+      objectiveText: $('objective-text'),
+      objectiveTimer: $('objective-timer'),
+      objectiveInfo: $('objective-info'),
+      objectiveMeter: $('objective-meter'),
+      objectiveMeterFill: $('objective-meter-fill'),
+      dialogue: $('hud-dialogue'),
+      dialogueSpeaker: $('dialogue-speaker'),
+      dialogueText: $('dialogue-text'),
+      missionCard: $('hud-mission-card'),
+      missionCardLabel: $('mission-card-label'),
+      missionCardTitle: $('mission-card-title'),
+      missionCardSub: $('mission-card-sub'),
       debug: $('hud-debug'),
       toast: $('toast'),
       speedo: $('hud-speedo'),
@@ -93,6 +113,9 @@ export class UI {
     };
     this.state = 'loading';
     this.toastTimer = 0;
+    this.wantedLevel = 0;
+    this.wantedSearching = false;
+    this.missionCardTimer = 0;
     this.vehicleCardTimer = 0;
     this.fpsFrames = 0;
     this.fpsTime = 0;
@@ -227,21 +250,115 @@ export class UI {
   }
 
   /**
-   * "F — Машинд суух" / "F — Машин булаах" сануулга.
-   * @param {'enter'|'carjack'|null|false} mode
+   * Товчлуурын сануулга: "F — Машинд суух", "E — Даалгавар: …". key = null бол нуугдана.
+   * (Кадр бүр дуудагддаг тул текст өөрчлөгдсөн үед л DOM-ийг шинэчилнэ.)
    */
-  setEnterPrompt(mode) {
-    const visible = Boolean(mode);
+  setPrompt(key, text = '') {
+    const visible = Boolean(key);
     if (visible) {
-      const key = mode === 'carjack' ? 'prompt.carjack' : 'prompt.enterVehicle';
-      const text = this.el.promptText;
-      if (text.dataset.i18n !== key) {
-        text.dataset.i18n = key; // Хэл солиход translateDom зөв текстийг тавина
-        text.textContent = t(key);
-      }
+      if (this.el.promptKey.textContent !== key) this.el.promptKey.textContent = key;
+      if (this.el.promptText.textContent !== text) this.el.promptText.textContent = text;
     }
-    if (this.el.prompt.hidden === !visible) return;
-    this.el.prompt.hidden = !visible;
+    if (this.el.prompt.hidden !== !visible) this.el.prompt.hidden = !visible;
+  }
+
+  setMoney(amount) {
+    this.el.money.textContent = formatMoney(amount);
+  }
+
+  // ---------- Даалгавар ----------
+
+  /**
+   * Зорилтын самбар.
+   * @param {{timer?: number, meter?: number, danger?: boolean, warning?: string, info?: string}} [extra]
+   */
+  setObjective(title, text, extra = {}) {
+    const el = this.el;
+    el.objective.hidden = false;
+    setText(el.objectiveTitle, title);
+    setText(el.objectiveText, text);
+    const hasTimer = extra.timer !== undefined;
+    el.objectiveTimer.hidden = !hasTimer;
+    if (hasTimer) {
+      const seconds = Math.max(0, Math.ceil(extra.timer));
+      setText(el.objectiveTimer, `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`);
+      el.objectiveTimer.classList.toggle('is-urgent', seconds <= 15);
+    }
+    const info = extra.warning ?? extra.info;
+    el.objectiveInfo.hidden = !info;
+    if (info) setText(el.objectiveInfo, info);
+    el.objectiveInfo.classList.toggle('is-warning', Boolean(extra.warning));
+    const hasMeter = extra.meter !== undefined;
+    el.objectiveMeter.hidden = !hasMeter;
+    if (hasMeter) {
+      el.objectiveMeterFill.style.transform = `scaleX(${extra.meter.toFixed(3)})`;
+      el.objectiveMeter.classList.toggle('is-danger', Boolean(extra.danger));
+    }
+  }
+
+  hideObjective() {
+    this.el.objective.hidden = true;
+  }
+
+  showDialogue(speaker, color, text) {
+    const el = this.el;
+    el.dialogueSpeaker.textContent = speaker;
+    el.dialogueSpeaker.style.color = color;
+    el.dialogueText.textContent = text;
+    el.dialogue.hidden = false;
+  }
+
+  hideDialogue() {
+    this.el.dialogue.hidden = true;
+  }
+
+  /** Даалгавар эхлэх үеийн том гарчиг. */
+  showMissionCard(label, title, subtitle, variant = '', seconds = 3.2) {
+    const el = this.el;
+    el.missionCardLabel.textContent = label;
+    el.missionCardTitle.textContent = title;
+    el.missionCardSub.textContent = subtitle;
+    el.missionCard.className = `mission-card${variant ? ` is-${variant}` : ''}`;
+    el.missionCard.hidden = false;
+    this.missionCardTimer = seconds;
+  }
+
+  /** @param {'complete'|'failed'} type */
+  showMissionResult(type, title, subtitle) {
+    this.showMissionCard('', title, subtitle, type, 4);
+  }
+
+  /**
+   * Хайлтын од. searching — цагдаа харахгүй байгаа (хайж байна) үед одод анивчина.
+   * @param {number} level 0–5
+   */
+  setWanted(level, searching) {
+    if (level === this.wantedLevel && searching === this.wantedSearching) return;
+    const raised = level > this.wantedLevel;
+    this.wantedLevel = level;
+    this.wantedSearching = searching;
+    const element = this.el.wanted;
+    element.hidden = level === 0;
+    element.classList.toggle('is-searching', searching);
+    element.querySelectorAll('.wanted-star').forEach((star, i) => star.classList.toggle('is-active', i < level));
+    element.setAttribute('aria-label', t('police.stars', { stars: level }));
+    if (raised) {
+      // Од нэмэгдэхэд "цохилох" анимацийг дахин эхлүүлнэ
+      element.classList.remove('is-raised');
+      void element.offsetWidth;
+      element.classList.add('is-raised');
+    }
+  }
+
+  /** Баривчлах явц (0..1) — 0 бол нуугдана. */
+  setArrest(fraction) {
+    const visible = fraction > 0.02;
+    if (this.el.arrest.hidden !== !visible) this.el.arrest.hidden = !visible;
+    if (visible) this.el.arrestFill.style.transform = `scaleX(${fraction.toFixed(3)})`;
+  }
+
+  showBusted(visible) {
+    this.el.busted.hidden = !visible;
   }
 
   toast(message) {
@@ -331,6 +448,10 @@ export class UI {
   }
 
   update(dt) {
+    if (this.missionCardTimer > 0) {
+      this.missionCardTimer -= dt;
+      if (this.missionCardTimer <= 0) this.el.missionCard.hidden = true;
+    }
     if (this.toastTimer > 0) {
       this.toastTimer -= dt;
       if (this.toastTimer <= 0) this.el.toast.classList.remove('is-visible');
@@ -371,8 +492,18 @@ export class UI {
     }
     lines.push(`${t('debug.drawCalls')}: ${info.calls} · ${t('debug.triangles')}: ${info.triangles}`);
     if (this.game.npc) lines.push(t('debug.npc', this.game.npc.stats));
+    const { wanted, police } = this.game;
+    if (wanted && wanted.level > 0) {
+      const status = wanted.seen ? t('debug.spotted') : t('debug.searching', { seconds: Math.ceil(wanted.escapeTime - wanted.searchTime) });
+      lines.push(t('debug.wanted', { stars: wanted.level, units: police.units.length, status }));
+    }
     element.textContent = lines.join('\n');
   }
+}
+
+/** Текст өөрчлөгдсөн үед л DOM-ийг шинэчилнэ. */
+function setText(element, text) {
+  if (element.textContent !== text) element.textContent = text;
 }
 
 function createKey(label) {

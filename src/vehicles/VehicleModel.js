@@ -190,6 +190,9 @@ export class VehicleModel {
       add(new THREE.BoxGeometry(0.57, 0.06, 0.28), trim, 0, b.roof.y + 0.1, ((b.roof.front + b.roof.rear) / 2) * s);
     }
 
+    // Цагдаагийн машин: хажуугийн зурвас, "ЦАГДАА" бичиг, дээвэр дээрх анивчдаг гэрэл
+    if (def.police) this.buildPoliceKit(add, trim, s);
+
     // Дотор тал: суудал, самбар, жолооны хүрд (шилээр харагдана)
     for (const x of [driverX, -driverX]) {
       inside(add(new THREE.BoxGeometry(0.48, 0.1, 0.5), interior, x, b.seat.hip - 0.07, b.seat.z * s));
@@ -211,6 +214,47 @@ export class VehicleModel {
     root.add(this.seat);
 
     this.buildWheels();
+  }
+
+  buildPoliceKit(add, trim, s) {
+    const { def, body: b } = this;
+    const { size, colors } = def;
+    const ys = b.body.map(([, y]) => y);
+    const minY = Math.min(...ys);
+    const beltY = minY + (Math.max(...ys) - minY) * 0.62; // Дугуйнаас дээгүүр
+    const stripe = lowPolyMaterial(colors.stripe, { roughness: 0.5 });
+    const label = new THREE.MeshStandardMaterial({ map: policeLabelTexture(colors.stripe), transparent: true, roughness: 0.5 });
+    for (const side of [-1, 1]) {
+      add(new THREE.BoxGeometry(0.02, 0.17, size.length * 0.84), stripe, side * (size.width / 2 + 0.004), beltY, 0);
+      const text = add(new THREE.PlaneGeometry(1.3, 0.15), label, side * (size.width / 2 + 0.016), beltY, 0.1);
+      text.rotation.y = (side * Math.PI) / 2;
+      text.castShadow = false;
+      text.userData.decal = true; // NPC-ийн instanced загварт бичиггүй (зурвас нь хангалттай)
+    }
+
+    // Гэрлийн самбар: зүүн (+X) тал улаан, баруун тал цэнхэр
+    const roofZ = ((b.roof.front + b.roof.rear) / 2) * s;
+    const barWidth = Math.min(1.15, size.width - 0.35);
+    add(new THREE.BoxGeometry(barWidth, 0.07, 0.26), trim, 0, b.roof.y + 0.05, roofZ);
+    const sirenMaterial = (color, emissive) =>
+      new THREE.MeshStandardMaterial({ color, emissive, emissiveIntensity: 0.15, roughness: 0.4, flatShading: true });
+    this.sirenRed = sirenMaterial(0x7a1a1a, 0xff2020);
+    this.sirenBlue = sirenMaterial(0x1a2a7a, 0x2a5cff);
+    add(new THREE.BoxGeometry(barWidth * 0.46, 0.11, 0.22), this.sirenRed, barWidth * 0.26, b.roof.y + 0.13, roofZ);
+    add(new THREE.BoxGeometry(barWidth * 0.46, 0.11, 0.22), this.sirenBlue, -barWidth * 0.26, b.roof.y + 0.13, roofZ);
+  }
+
+  /**
+   * Цагдаагийн гэрэл: асаалттай үед улаан, цэнхэр ээлжлэн хоёр хоёр анивчина.
+   * @param {number} time Секунд (машин бүр өөр фазтай)
+   */
+  setSiren(on, time) {
+    if (!this.sirenRed) return;
+    const f = (time * 1.6) % 1;
+    const red = on && (f < 0.12 || (f > 0.2 && f < 0.32));
+    const blue = on && ((f > 0.5 && f < 0.62) || (f > 0.7 && f < 0.82));
+    this.sirenRed.emissiveIntensity = red ? 3.2 : 0.15;
+    this.sirenBlue.emissiveIntensity = blue ? 3.2 : 0.15;
   }
 
   buildWheels() {
@@ -277,5 +321,29 @@ export class VehicleModel {
   dispose() {
     this.root.removeFromParent();
     this.brakeMaterial.dispose();
+    this.sirenRed?.dispose();
+    this.sirenBlue?.dispose();
   }
+}
+
+/** "ЦАГДАА" бичигтэй тунгалаг текстур (өнгө бүрт нэг удаа зурна). */
+const labelTextures = new Map();
+function policeLabelTexture(stripeColor) {
+  let texture = labelTextures.get(stripeColor);
+  if (texture) return texture;
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  const light = new THREE.Color(stripeColor).getHSL({ h: 0, s: 0, l: 0 }).l > 0.6;
+  ctx.fillStyle = light ? '#22324f' : '#ffffff';
+  ctx.font = '800 46px "Montserrat Variable", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('ЦАГДАА', 256, 34);
+  texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  labelTextures.set(stripeColor, texture);
+  return texture;
 }

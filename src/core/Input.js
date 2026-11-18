@@ -20,6 +20,7 @@ export const KEY_BINDINGS = {
   pause: ['Escape', 'KeyP'],
   debugInfo: ['F3'],
   debugPhysics: ['F4'],
+  debugWanted: ['F8'], // Туршилт: хайлтын од нэмэх (Үе шат 5)
 };
 
 /** Стандарт gamepad-ийн товчлуурын индекс (Xbox нэршлээр; PlayStation дээр A = ✕, B = ○). */
@@ -40,7 +41,7 @@ export const PAD_BINDINGS = {
 };
 
 // Тоглож байх үед browser-ийн анхдагч үйлдлийг (хуудас гүйлгэх, focus шилжих г.м.) хаах товчлуурууд
-const PREVENT_DEFAULT = new Set(['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F3', 'F4']);
+const PREVENT_DEFAULT = new Set(['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F3', 'F4', 'F8']);
 const STICK_DEADZONE = 0.18;
 // Pointer lock эхлэх/дуусахад зарим browser хулганы асар том "үсрэлт" өгдөг — таслана
 const MAX_MOUSE_DELTA = 250;

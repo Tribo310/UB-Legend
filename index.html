@@ -18,6 +18,52 @@
       <div id="hud-speech" class="speech-layer" aria-hidden="true"></div>
       <pre id="hud-debug" class="hud-debug" hidden></pre>
 
+      <!-- Мөнгө (₮) -->
+      <div id="hud-money" class="money"></div>
+
+      <!-- Даалгаврын зорилт (дээд төвд): гарчиг, зорилт, цаг, хэмжүүр -->
+      <div id="hud-objective" class="objective" hidden>
+        <span id="objective-title" class="objective-title"></span>
+        <span id="objective-text" class="objective-text"></span>
+        <span id="objective-timer" class="objective-timer" hidden></span>
+        <span id="objective-info" class="objective-info" hidden></span>
+        <div id="objective-meter" class="objective-meter" hidden><span id="objective-meter-fill"></span></div>
+      </div>
+
+      <!-- Харилцан яриа (хадмал) -->
+      <div id="hud-dialogue" class="dialogue" hidden>
+        <span id="dialogue-speaker" class="dialogue-speaker"></span>
+        <span id="dialogue-text" class="dialogue-text"></span>
+      </div>
+
+      <!-- Даалгавар эхлэх / дуусах карт -->
+      <div id="hud-mission-card" class="mission-card" hidden>
+        <span id="mission-card-label" class="mission-card-label"></span>
+        <span id="mission-card-title" class="mission-card-title"></span>
+        <span id="mission-card-sub" class="mission-card-sub"></span>
+      </div>
+
+      <!-- Хайлтын түвшин (1–5 од), цагдаа харахгүй үед анивчина -->
+      <div id="hud-wanted" class="wanted" role="status" hidden>
+        <span class="wanted-star"></span>
+        <span class="wanted-star"></span>
+        <span class="wanted-star"></span>
+        <span class="wanted-star"></span>
+        <span class="wanted-star"></span>
+      </div>
+
+      <!-- Баривчлагдаж байна (цагдаа ойрхон) -->
+      <div id="hud-arrest" class="arrest" hidden>
+        <span data-i18n="police.arresting">Баривчилж байна — зугт!</span>
+        <div class="arrest-bar"><span id="hud-arrest-fill" class="arrest-fill"></span></div>
+      </div>
+
+      <!-- Баривчлагдлаа -->
+      <div id="hud-busted" class="busted" hidden>
+        <div class="busted-title" data-i18n="police.busted">БАРИВЧЛАГДЛАА</div>
+        <div class="busted-subtitle" data-i18n="police.bustedSub">Таныг цагдаагийн хэлтэст аваачиж байна…</div>
+      </div>
+
       <!-- Мини газрын зураг (доод зүүн буланд) -->
       <div id="hud-minimap" class="minimap">
         <span id="minimap-district" class="minimap-district"></span>
@@ -25,10 +71,10 @@
       </div>
       <div id="hud-look-hint" class="hud-look-hint" data-i18n="hud.clickToLook" hidden></div>
 
-      <!-- Машины ойролцоо: "F — Машинд суух" / "F — Машин булаах" -->
+      <!-- Товчлуурын сануулга: "F — Машинд суух", "E — Даалгавар: …" -->
       <div id="hud-prompt" class="hud-prompt" hidden>
-        <kbd>F</kbd>
-        <span id="hud-prompt-text" data-i18n="prompt.enterVehicle">Машинд суух</span>
+        <kbd id="hud-prompt-key">F</kbd>
+        <span id="hud-prompt-text"></span>
       </div>
 
       <!-- Машинд суумагц гарах үзүүлэлтийн карт -->
@@ -78,7 +124,7 @@
             <span data-i18n="game.title">Хотын Домог</span>
           </h1>
           <p class="tagline" data-i18n="game.tagline">Хөдөөнөөс ирсэн залуу. Алга болсон ах. Нэг том хот.</p>
-          <span class="badge" data-i18n="game.stage">Үе шат 4 · Хотын хүн ам ба хөдөлгөөн</span>
+          <span class="badge" data-i18n="game.stage">Үе шат 6 · Даалгавар</span>
 
           <div class="actions">
             <button id="btn-play" class="btn btn--primary" type="button" disabled>

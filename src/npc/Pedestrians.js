@@ -205,7 +205,69 @@ export class Pedestrians {
     return ped;
   }
 
+  /**
+   * Гаднаас удирддаг хүн (жишээ нь явган цагдаа): замын сүлжээгүй, controller.step(ped, dt) хөдөлгөнө.
+   * Машинд мөргүүлбэл бусадтай адил унаж босно.
+   * @param {{x:number, y:number, z:number}} at
+   * @param {{top:number, legs:number, hair:number, skin?:number}} colors
+   * @param {{step: (ped: object, dt: number) => void}} controller
+   * @param {{deel?: boolean, scale?: number, facing?: number}} [options] Дээлтэй эсэх, биеийн хэмжээ
+   */
+  spawnControlled(at, colors, controller, options = {}) {
+    if (this.peds.length >= SETTINGS.capacity) {
+      const spare = this.peds.find((p) => !p.controller);
+      if (spare) this.remove(spare);
+    }
+    const ped = this.spawnAt(this.walkEdges[0], true, 0);
+    ped.controller = controller;
+    ped.state = 'controlled';
+    ped.deel = Boolean(options.deel);
+    Object.assign(ped.colors, colors);
+    ped.colors.deel = ped.colors.top;
+    if (options.scale) ped.scale = options.scale;
+    if (options.facing !== undefined) ped.yaw = ped.renderYaw = options.facing;
+    ped.position.set(at.x, at.y, at.z);
+    ped.prevPosition.copy(ped.position);
+    ped.renderPosition.copy(ped.position);
+    ped.body.setTranslation(this.bodyCenter(ped), true);
+    return ped;
+  }
+
+  /** Гаднаас удирдсан хүнийг (даалгаврын дүр) энгийн явган хүн болгож, ойрын явган замаар явуулна. */
+  release(ped) {
+    if (ped.removed) return;
+    const edge = this.nearestWalkEdge(ped.position);
+    ped.controller = null;
+    if (!edge) {
+      this.remove(ped);
+      return;
+    }
+    ped.edge = edge.edge;
+    ped.forward = Math.random() < 0.5;
+    ped.s = ped.forward ? edge.s : edge.edge.length - edge.s;
+    ped.state = 'walk';
+    ped.speed = 0;
+  }
+
+  /** Цэгт хамгийн ойр явган зам (40 м дотор), уртын дагуух байрлалтай. */
+  nearestWalkEdge(at) {
+    let best = null;
+    let bestDistance = 40;
+    for (const edge of this.walkEdges) {
+      const ex = edge.b.x - edge.a.x;
+      const ez = edge.b.z - edge.a.z;
+      const t = clamp(((at.x - edge.a.x) * ex + (at.z - edge.a.z) * ez) / (edge.length * edge.length), 0, 1);
+      const d = Math.hypot(edge.a.x + ex * t - at.x, edge.a.z + ez * t - at.z);
+      if (d < bestDistance) {
+        bestDistance = d;
+        best = { edge, s: t * edge.length };
+      }
+    }
+    return best;
+  }
+
   remove(ped) {
+    ped.removed = true;
     const index = this.peds.indexOf(ped);
     if (index >= 0) this.peds.splice(index, 1);
     if (ped.body) {
@@ -248,24 +310,14 @@ export class Pedestrians {
    * @param {{x:number, z:number}} threat
    */
   spawnFleeing(at, threat) {
-    let best = null;
-    let bestDistance = 40;
-    let bestS = 0;
-    for (const edge of this.walkEdges) {
-      const ex = edge.b.x - edge.a.x;
-      const ez = edge.b.z - edge.a.z;
-      const t = clamp(((at.x - edge.a.x) * ex + (at.z - edge.a.z) * ez) / (edge.length * edge.length), 0, 1);
-      const d = Math.hypot(edge.a.x + ex * t - at.x, edge.a.z + ez * t - at.z);
-      if (d < bestDistance) {
-        bestDistance = d;
-        best = edge;
-        bestS = t * edge.length;
-      }
+    const nearest = this.nearestWalkEdge(at);
+    if (!nearest) return null;
+    if (this.peds.length >= SETTINGS.capacity) {
+      const spare = this.peds.find((p) => !p.controller);
+      if (spare) this.remove(spare);
     }
-    if (!best) return null;
-    if (this.peds.length >= SETTINGS.capacity) this.remove(this.peds[0]);
-    const ped = this.spawnAt(best, true, bestS);
-    ped.position.set(at.x, best.y, at.z);
+    const ped = this.spawnAt(nearest.edge, true, nearest.s);
+    ped.position.set(at.x, nearest.edge.y, at.z);
     ped.prevPosition.copy(ped.position);
     ped.renderPosition.copy(ped.position);
     ped.body.setTranslation(this.bodyCenter(ped), true);
@@ -421,10 +473,12 @@ export class Pedestrians {
     const knocked = ped.state === 'fall' || ped.state === 'down' || ped.state === 'getup';
     if (!knocked) {
       this.checkVehicles(ped, ctx);
-      this.checkPlayerBump(ped, ctx);
+      if (!ped.controller) this.checkPlayerBump(ped, ctx);
     }
 
-    switch (ped.state) {
+    if (ped.state === 'controlled') {
+      ped.controller.step(ped, dt);
+    } else switch (ped.state) {
       case 'walk':
       case 'cross':
       case 'flee':
@@ -548,8 +602,12 @@ export class Pedestrians {
       if (ped.timer <= 0) {
         ped.pitch = 0;
         this.setBodyEnabled(ped, true);
-        this.speak(ped, 'hit');
-        this.startFlee(ped, ped.fleeFrom);
+        if (ped.controller) {
+          ped.state = 'controlled'; // Цагдаа босоод ажлаа үргэлжлүүлнэ
+        } else {
+          this.speak(ped, 'hit');
+          this.startFlee(ped, ped.fleeFrom);
+        }
       }
     }
   }
@@ -581,7 +639,7 @@ export class Pedestrians {
         }
         return;
       }
-      if (!v.driven || speed < 6 || ped.state === 'dodge' || ped.state === 'flee') continue;
+      if (!v.driven || speed < 6 || ped.controller || ped.state === 'dodge' || ped.state === 'flee') continue;
       const mx = v.vx / speed;
       const mz = v.vz / speed;
       const ahead = dx * mx + dz * mz;

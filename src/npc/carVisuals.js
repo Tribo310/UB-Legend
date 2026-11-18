@@ -45,7 +45,7 @@ export function createCarVisual(scene, typeId, capacity) {
   const paint = [];
   const details = [];
   model.root.traverse((object) => {
-    if (!object.isMesh || object.userData.interior) return;
+    if (!object.isMesh || object.userData.interior || object.userData.decal) return;
     const material = Array.isArray(object.material) ? object.material[0] : object.material;
     if (material === model.paintMaterial) {
       paint.push(bake(object, WHITE));

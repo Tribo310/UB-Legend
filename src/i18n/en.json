@@ -5,7 +5,7 @@
   "game": {
     "title": "City Legend",
     "tagline": "A young man from the countryside. A missing brother. One big city.",
-    "stage": "Stage 4 · People & traffic",
+    "stage": "Stage 6 · Missions",
     "disclaimer": "Original work. All characters, places and organizations are fictional."
   },
   "start": {
@@ -47,11 +47,12 @@
     "handbrake": "Handbrake",
     "exitVehicle": "Exit",
     "upcoming": "Coming in later stages",
-    "interact": "Interact",
+    "interact": "Interact · start missions, skip dialogue",
     "map": "Full map",
     "phone": "Phone",
     "gamepad": "Gamepad: left stick — move, right stick — camera, A — jump, B/LB — run, Y — enter vehicle, Start — menu",
-    "gamepadDrive": "Gamepad (driving): RT — accelerate, LT — brake/reverse, left stick — steer, RB — handbrake, Y — exit"
+    "gamepadDrive": "Gamepad (driving): RT — accelerate, LT — brake/reverse, left stick — steer, RB — handbrake, Y — exit",
+    "wantedDebug": "Add a wanted star (test)"
   },
   "keys": {
     "mouse": "Mouse",
@@ -94,6 +95,14 @@
       "name": "Minibus",
       "description": "The city's shared minibus. Slow but sturdy, with room for a crowd."
     },
+    "police": {
+      "name": "Police car",
+      "description": "The city's patrol car: strong engine, great grip. Stealing one raises your wanted level."
+    },
+    "policeSuv": {
+      "name": "Police SUV",
+      "description": "Heavy and tough — shows up at high wanted levels and rams you off the road."
+    },
     "stats": {
       "speed": "Speed",
       "handling": "Handling",
@@ -128,16 +137,284 @@
     "mps": "m/s",
     "vehicle": "Vehicle",
     "wheels": "wheels grounded",
-    "npc": "NPC: {cars} cars · {peds} pedestrians"
+    "npc": "NPC: {cars} cars · {peds} pedestrians",
+    "wanted": "Wanted: {stars}★ · police {units} · {status}",
+    "spotted": "spotted",
+    "searching": "searching ({seconds} s)"
   },
   "npc": {
-    "bump": ["Hey, watch it!", "What do you think you're doing?", "Look where you're going!", "Quit shoving!", "Ow, my foot!", "Ever heard of “excuse me”?"],
-    "wait": ["Let me through.", "Coming through, please.", "Excuse me, may I pass?", "Out of the way, please."],
-    "flee": ["Oh my god!", "Are you crazy?!", "Slow down!", "Look out!", "Someone's going to get hurt!"],
-    "hit": ["Ow! Where are your eyes?!", "I'm calling the police!", "Ugh, my back…", "Who gave you a license?!", "What are you doing?!"],
-    "honk": ["Beeeep!", "Hey, you're blocking the road!", "Are you moving or not?!", "Get out of the way!"],
-    "carBump": ["Hey! My car!", "Watch where you're driving!", "This car is brand new!", "I hope you're insured!"],
-    "jacked": ["My car!", "Thief! Police!", "Give it back!", "This is a robbery!"]
+    "bump": [
+      "Hey, watch it!",
+      "What do you think you're doing?",
+      "Look where you're going!",
+      "Quit shoving!",
+      "Ow, my foot!",
+      "Ever heard of “excuse me”?"
+    ],
+    "wait": [
+      "Let me through.",
+      "Coming through, please.",
+      "Excuse me, may I pass?",
+      "Out of the way, please."
+    ],
+    "flee": [
+      "Oh my god!",
+      "Are you crazy?!",
+      "Slow down!",
+      "Look out!",
+      "Someone's going to get hurt!"
+    ],
+    "hit": [
+      "Ow! Where are your eyes?!",
+      "I'm calling the police!",
+      "Ugh, my back…",
+      "Who gave you a license?!",
+      "What are you doing?!"
+    ],
+    "honk": [
+      "Beeeep!",
+      "Hey, you're blocking the road!",
+      "Are you moving or not?!",
+      "Get out of the way!"
+    ],
+    "carBump": [
+      "Hey! My car!",
+      "Watch where you're driving!",
+      "This car is brand new!",
+      "I hope you're insured!"
+    ],
+    "jacked": [
+      "My car!",
+      "Thief! Police!",
+      "Give it back!",
+      "This is a robbery!"
+    ],
+    "officer": [
+      "Stop! Police!",
+      "Freeze!",
+      "Hands up!",
+      "I said stop!",
+      "Don't run!"
+    ]
+  },
+  "police": {
+    "wanted": "The police are after you! ({crime})",
+    "levelUp": "Wanted level up: {crime}",
+    "escaped": "You lost the police",
+    "busted": "BUSTED",
+    "bustedSub": "You're being taken to the police station…",
+    "released": "Released from the police station",
+    "arresting": "Being arrested — get away!",
+    "stars": "Wanted level: {stars} stars",
+    "crimes": {
+      "pedestrianHit": "hit a pedestrian",
+      "carjack": "carjacking",
+      "vehicleRam": "rammed a car",
+      "redLight": "ran a red light in front of the police",
+      "policeRam": "rammed a police car",
+      "officerHit": "hit a police officer",
+      "policeCarTheft": "stole a police car",
+      "pursuit": "still evading the police",
+      "debug": "test star (F8)"
+    }
+  },
+  "characters": {
+    "bat": "Bat",
+    "ganaa": "Ganaa",
+    "bagsh": "Bagsh",
+    "saraa": "Saraa",
+    "receiver": "East Blocks guy"
+  },
+  "missions": {
+    "label": "Mission {number}",
+    "startPrompt": "Mission: {title}",
+    "wantedBlocked": "Lose the police first",
+    "returnToVehicle": "Get back in the vehicle",
+    "distance": "Distance: {meters} m",
+    "tooFar": "You're losing them! Get closer ({seconds} s)",
+    "tooClose": "Too close — they'll notice!",
+    "complete": "MISSION PASSED",
+    "failed": "MISSION FAILED",
+    "unlocked": "New mission: {name} — check the marker on the map",
+    "chapterContinues": "Chapter 1 continues… (more missions coming soon)",
+    "fail": {
+      "timeout": "Time ran out",
+      "lost": "You lost the SUV",
+      "spotted": "They spotted you",
+      "vehicleLost": "The mission vehicle is gone",
+      "busted": "Busted",
+      "abandoned": "Mission abandoned"
+    },
+    "m1": {
+      "title": "Welcome to the City",
+      "objectives": {
+        "enter": "Get into Ganaa's taxi",
+        "drive": "Drive Ganaa to the Grand Market — stop on the marker"
+      },
+      "lines": {
+        "intro": [
+          {
+            "s": "ganaa",
+            "t": "Hey, kid! You're Tömör's little brother, Bat, right? You've got the same face."
+          },
+          {
+            "s": "bat",
+            "t": "That's right. Do you know my brother? He's been missing for three months."
+          },
+          {
+            "s": "ganaa",
+            "t": "Of course — we rented a flat together. The last time I saw him was at the Grand Market."
+          },
+          {
+            "s": "ganaa",
+            "t": "My taxi's parked right here. You drive me to the market and I'll tell you everything on the way."
+          }
+        ],
+        "ride": [
+          {
+            "s": "ganaa",
+            "t": "Tömör was a good guy. Came from the countryside, worked hard, sent money home."
+          },
+          {
+            "s": "ganaa",
+            "t": "Then last winter he sat down at a card table… and ended up owing Bagsh."
+          },
+          {
+            "s": "bat",
+            "t": "Who is Bagsh?"
+          },
+          {
+            "s": "ganaa",
+            "t": "The owner of the market. Half the city owes him money, the other half is afraid of him."
+          },
+          {
+            "s": "ganaa",
+            "t": "Even the North Hill crew and the East Blocks boys tread carefully around Bagsh."
+          },
+          {
+            "s": "ganaa",
+            "t": "And mind the traffic lights, kid. The police in this city are always watching."
+          }
+        ],
+        "outro": [
+          {
+            "s": "ganaa",
+            "t": "Here we are. Bagsh sits by the market's west gate — the man in the red deel and hat."
+          },
+          {
+            "s": "ganaa",
+            "t": "Keep the taxi for now. If anything happens, call me — just ask for Ganaa, everyone knows me."
+          },
+          {
+            "s": "bat",
+            "t": "Thank you, Ganaa."
+          }
+        ]
+      }
+    },
+    "m2": {
+      "title": "Bagsh's Cargo",
+      "objectives": {
+        "enter": "Get into Bagsh's minibus",
+        "drive": "Deliver the cargo to the East Blocks"
+      },
+      "lines": {
+        "intro": [
+          {
+            "s": "bagsh",
+            "t": "Ah, Tömör's brother. Did you know your brother owes me thirty million tögrög?"
+          },
+          {
+            "s": "bat",
+            "t": "Tell me where my brother is. I'll pay his debt."
+          },
+          {
+            "s": "bagsh",
+            "t": "Pay? Where would a country boy find that kind of money? You'll pay with work."
+          },
+          {
+            "s": "bagsh",
+            "t": "There's cargo in my minibus. Get it to the East Blocks within two and a half minutes. Late is the same as never."
+          }
+        ],
+        "call": [
+          {
+            "s": "bagsh",
+            "t": "One more thing, boy. Don't open the cargo. Curious people don't live long in this city."
+          },
+          {
+            "s": "bat",
+            "t": "Understood."
+          }
+        ],
+        "outro": [
+          {
+            "s": "receiver",
+            "t": "Bagsh's guy? Leave the cargo right there."
+          },
+          {
+            "s": "receiver",
+            "t": "Tell Bagsh the East Blocks paid their monthly share. And don't send new faces again."
+          },
+          {
+            "s": "bat",
+            "t": "Even the East Blocks pay Bagsh… What did my brother get himself into?"
+          }
+        ]
+      }
+    },
+    "m3": {
+      "title": "Saraa's Lead",
+      "objectives": {
+        "enter": "Get into Saraa's car",
+        "tail": "Tail the black SUV without being noticed",
+        "observe": "Watch from a distance — stop and wait"
+      },
+      "lines": {
+        "intro": [
+          {
+            "s": "saraa",
+            "t": "Bat? I'm Saraa, a journalist. Ganaa told me about you."
+          },
+          {
+            "s": "saraa",
+            "t": "I've been investigating Bagsh's corruption for three years. Your brother was a witness in the case."
+          },
+          {
+            "s": "bat",
+            "t": "A witness? Then where is he?"
+          },
+          {
+            "s": "saraa",
+            "t": "That's the question. Across the street there's a black SUV from the North Hill gang — they just met with Bagsh."
+          },
+          {
+            "s": "saraa",
+            "t": "Take my car. Follow them and find out where they go. Too close and they'll notice; too far and you'll lose them."
+          }
+        ],
+        "call": [
+          {
+            "s": "saraa",
+            "t": "I'm on the phone with you. Don't let that SUV out of your sight."
+          }
+        ],
+        "outro": [
+          {
+            "s": "bat",
+            "t": "Saraa, they drove into a yard on North Hill. The gate is red."
+          },
+          {
+            "s": "saraa",
+            "t": "The red gate… I have a tip that your brother was last seen there."
+          },
+          {
+            "s": "saraa",
+            "t": "Don't go in alone. I'll check my sources and call you. Be careful, Bat."
+          }
+        ]
+      }
+    }
   },
   "world": {
     "signTitle": "UB: CITY LEGEND",

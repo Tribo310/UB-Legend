@@ -4,13 +4,18 @@
 // Давталт:  оролт → камер → [физик × N тогтмол алхам] → interpolation → анимаци → зураг
 // Явган үед тоглогчийн character controller, машинд суусан үед машины физик удирдагдана.
 // NPC (машин, явган хүн, гэрлэн дохио) физикийн алхам бүрт тоглогчийн дараа, world.step()-ээс өмнө.
+// Цагдаа (Үе шат 5): гэмт хэрэг → хайлтын түвшин (WantedSystem) → цагдаагийн машин, явган цагдаа.
+// Даалгавар (Үе шат 6): E — эхлэх цэг дээр даалгавар эхлүүлэх / яриаг алгасах, шагнал → мөнгө (Progress).
 import * as THREE from 'three';
-import { districtAt } from '../city/cityLayout.js';
+import { districtAt, POLICE_STATION } from '../city/cityLayout.js';
 import { getLanguage, setLanguage as applyLanguage, t } from '../i18n/i18n.js';
+import { MissionManager } from '../missions/MissionManager.js';
 import { Navigator } from '../navigation/Navigator.js';
 import { NpcManager } from '../npc/NpcManager.js';
 import { RoadGraph } from '../navigation/RoadGraph.js';
 import { Player } from '../player/Player.js';
+import { PoliceManager } from '../police/PoliceManager.js';
+import { WantedSystem } from '../police/WantedSystem.js';
 import { ThirdPersonCamera } from '../player/ThirdPersonCamera.js';
 import { UI } from '../ui/UI.js';
 import { VehicleManager } from '../vehicles/VehicleManager.js';
@@ -18,6 +23,7 @@ import { World } from '../world/World.js';
 import { CONFIG } from './config.js';
 import { Input } from './Input.js';
 import { Physics } from './Physics.js';
+import { Progress } from './Progress.js';
 import { PhysicsDebug } from './PhysicsDebug.js';
 import { Settings } from './Settings.js';
 
@@ -36,6 +42,10 @@ const UNLOCK_DEBOUNCE_MS = 400;
 const SETTLE_STEPS = 90;
 // Тоглогчоос ийм хол орхигдсон түр машиныг (булаасан машин г.м.) устгана (м)
 const ABANDONED_VEHICLE_DISTANCE = 420;
+// "Баривчлагдлаа" дэлгэц хэдэн секунд харагдах вэ
+const BUSTED_SECONDS = 3.5;
+// Баривчлагдсан үед машинд өгөх оролт (тоормос)
+const BRAKE_INPUT = Object.freeze({ throttle: 0, brake: 1, steer: 0, handbrake: true });
 
 export class Game {
   constructor() {
@@ -51,6 +61,7 @@ export class Game {
     /** @type {object|null} F дарвал булааж болох NPC машин (замын хөдөлгөөнөөс) */
     this.carjackCandidate = null;
     this.cullTimer = 0;
+    this.bustedTimer = 0; // > 0 бол баривчлагдсан (удирдлага түгжигдэнэ)
     // NPC-ийн физик алхамд дамжуулах мэдээлэл (кадр бүр шинээр үүсгэхгүй)
     this.npcState = { player: null, onFoot: true, vehicles: null };
   }
@@ -104,12 +115,48 @@ export class Game {
     this.npcState.player = this.player;
     this.npcState.vehicles = this.vehicles.vehicles;
     this.npc.populate(this.player.position);
+    // Замын граф: GPS ба цагдаагийн маршрут хоёулаа ашиглана
+    this.roadGraph = new RoadGraph(this.world.city.network);
+    // Хайлтын түвшин ба цагдаа
+    this.wanted = new WantedSystem();
+    this.police = new PoliceManager({
+      physics: this.physics,
+      vehicles: this.vehicles,
+      npc: this.npc,
+      graph: this.roadGraph,
+      city: this.world.city,
+      wanted: this.wanted,
+    });
+    this.police.onBusted = () => this.bust();
+    this.police.onCrime = (crime) => this.reportCrime(crime);
+    this.wanted.onChange = (level, previous, reason) => this.handleWantedChange(level, previous, reason);
+    this.wanted.onEscaped = () => this.ui.toast(t('police.escaped'));
+    this.npc.onPedestrianHit = (ped, vehicle) => {
+      if (vehicle === this.activeVehicle) this.reportCrime(ped.officer ? 'officerHit' : 'pedestrianHit');
+    };
+    this.npc.onCarBumped = (vehicle, impact) => {
+      if (vehicle === this.activeVehicle && impact > 6) this.reportCrime('vehicleRam');
+    };
     this.cameraRig = new ThirdPersonCamera(this.camera, this.physics, this.settings);
     this.cameraRig.yaw = 0.9; // Цэсний үеийн эхлэх өнцөг
     this.physicsDebug = new PhysicsDebug(this.scene, this.physics);
     // GPS ба газрын зураг
-    this.navigator = new Navigator(new RoadGraph(this.world.city.network));
+    this.navigator = new Navigator(this.roadGraph);
     this.ui.initMap(this.world.mapData, this.navigator, (point) => this.setWaypoint(point));
+    // Ахиц (мөнгө) ба даалгавар
+    this.progress = new Progress();
+    this.progress.onMoneyChange = (money) => this.ui.setMoney(money);
+    this.ui.setMoney(this.progress.money);
+    this.missions = new MissionManager({
+      scene: this.scene,
+      physics: this.physics,
+      vehicles: this.vehicles,
+      npc: this.npc,
+      graph: this.roadGraph,
+      navigator: this.navigator,
+      ui: this.ui,
+      progress: this.progress,
+    });
 
     // Машины пүрш, хайрцгийн овоо тогтвортой суутал физикийг урьдчилан ажиллуулна
     // (мөн статик collider-уудыг цацраг/KCC query-д бэлэн болгоно)
@@ -173,6 +220,8 @@ export class Game {
    */
   stepPhysics(step, includePlayer) {
     if (includePlayer) this.player.fixedUpdate(step);
+    this.police.fixedUpdate(step, this.player, this.activeVehicle);
+    this.missions.fixedUpdate(step);
     this.npcState.onFoot = !this.activeVehicle;
     this.npc.fixedUpdate(step, this.npcState);
     this.vehicles.fixedUpdate(step);
@@ -201,12 +250,22 @@ export class Game {
 
   updatePlaying(dt) {
     const { input, player, cameraRig } = this;
+    // Баривчлагдсан: хэдэн секунд удирдлага түгжигдээд цагдаагийн хэлтэст очно
+    if (this.bustedTimer > 0) {
+      this.bustedTimer -= dt;
+      if (this.bustedTimer <= 0) this.finishArrest();
+    }
+    const locked = this.bustedTimer > 0;
     cameraRig.handleInput(input, dt);
-    if (this.activeVehicle) this.activeVehicle.setDriverInput(input.getDriveInput());
+    if (this.activeVehicle) this.activeVehicle.setDriverInput(locked ? BRAKE_INPUT : input.getDriveInput());
+    else if (locked) player.clearInput();
     else player.handleInput(input, cameraRig.yaw);
 
+    // E / X: даалгавар эхлүүлэх, яриаг алгасах
+    if (input.wasPressed('interact') && !locked) this.missions.interact();
+
     // F / Y: машинд суух, буух эсвэл замын хөдөлгөөний машиныг булаах
-    if (input.wasPressed('vehicle')) {
+    if (input.wasPressed('vehicle') && !locked) {
       if (this.activeVehicle) this.exitVehicle();
       else if (this.enterCandidate) this.enterVehicle(this.enterCandidate);
       else if (this.carjackCandidate) this.carjack(this.carjackCandidate);
@@ -230,6 +289,11 @@ export class Game {
       focus = player.renderPosition;
     }
     this.npc.update(dt, alpha, focus);
+    this.police.update(dt, this.npc.cameraForward);
+    this.missions.update(dt, { player, vehicle: this.activeVehicle, wantedLevel: this.wanted.level });
+    if (!this.activeVehicle) this.updatePrompt();
+    this.ui.setWanted(this.wanted.level, this.wanted.searching);
+    this.ui.setArrest(this.police.arrestFraction);
     this.world.update(focus);
     this.updateNavigation(dt, focus);
     this.physicsDebug.update();
@@ -252,8 +316,13 @@ export class Game {
       speed: vehicle ? vehicle.speed : this.player.horizontalSpeed,
       driving: Boolean(vehicle),
       vehicles: this.vehicles.vehicles
-        .filter((v) => v !== vehicle)
+        .filter((v) => v !== vehicle && !this.police.owns(v))
         .map((v) => ({ x: v.renderPosition.x, z: v.renderPosition.z, yaw: v.yaw })),
+      police: this.police.blips(),
+      missions: this.missions.blips(),
+      search: this.wanted.searching
+        ? { x: this.wanted.lastKnown.x, z: this.wanted.lastKnown.z, radius: this.wanted.searchRadius }
+        : null,
       district: t(`districts.${this.districtKeyAt(focus)}`),
     });
   }
@@ -306,6 +375,10 @@ export class Game {
       }
     }
     if (input.wasPressed('debugInfo')) this.ui.toggleDebug();
+    // F8 (туршилт): хайлтын түвшинг нэг одоор нэмнэ
+    if (input.wasPressed('debugWanted') && this.state === State.PLAYING && this.bustedTimer <= 0) {
+      this.wanted.addStar(this.activeVehicle ? this.activeVehicle.currPosition : this.player.position);
+    }
     if (input.wasPressed('debugPhysics') && this.state !== State.LOADING) {
       const enabled = this.physicsDebug.toggle();
       this.ui.toast(t(enabled ? 'hud.physicsOn' : 'hud.physicsOff'));
@@ -320,7 +393,17 @@ export class Game {
     const { enterDistance, maxEnterSpeed } = CONFIG.vehicle;
     this.enterCandidate = this.vehicles.findEnterable(this.player.position, enterDistance, maxEnterSpeed);
     this.carjackCandidate = this.enterCandidate ? null : this.npc.cars.findCarjackTarget(this.player.position);
-    this.ui.setEnterPrompt(this.enterCandidate ? 'enter' : this.carjackCandidate ? 'carjack' : null);
+  }
+
+  /** Товчлуурын сануулга: машин (F) эсвэл даалгавар (E). */
+  updatePrompt() {
+    if (this.bustedTimer > 0) this.ui.setPrompt(null);
+    else if (this.enterCandidate) this.ui.setPrompt('F', t('prompt.enterVehicle'));
+    else if (this.carjackCandidate) this.ui.setPrompt('F', t('prompt.carjack'));
+    else if (this.missions.prompt) {
+      const { def, blocked } = this.missions.prompt;
+      this.ui.setPrompt('E', blocked ? t('missions.wantedBlocked') : t('missions.startPrompt', { title: t(`missions.${def.id}.title`) }));
+    } else this.ui.setPrompt(null);
   }
 
   /** Физик машин үүсгэнэ (хөмөрснөөс эргүүлэхэд мэдэгдэл харуулна). */
@@ -343,12 +426,57 @@ export class Game {
     const vehicle = this.spawnVehicle(info.type, position, info.yaw, { color: info.color, persistent: false });
     this.carjackCandidate = null;
     this.enterVehicle(vehicle);
+    if (!vehicle.police) this.reportCrime('carjack'); // Цагдаагийн машиныг enterVehicle тооцсон
+  }
+
+  // ---------- Хайлтын түвшин, цагдаа ----------
+
+  /** Гэмт хэрэг: хайлтын түвшинд оноо нэмнэ (WantedSystem.CRIMES). */
+  reportCrime(crime) {
+    if (this.bustedTimer > 0) return;
+    const position = this.activeVehicle ? this.activeVehicle.currPosition : this.player.position;
+    this.wanted.report(crime, position);
+  }
+
+  handleWantedChange(level, previous, reason) {
+    this.ui.setWanted(level, this.wanted.searching);
+    if (level <= previous) return;
+    const crime = t(`police.crimes.${reason}`);
+    this.ui.toast(previous === 0 ? t('police.wanted', { crime }) : t('police.levelUp', { crime }));
+  }
+
+  /** Баривчлагдлаа: дэлгэц харуулж, удирдлагыг түгжинэ. */
+  bust() {
+    if (this.bustedTimer > 0) return;
+    this.missions.fail('busted');
+    this.bustedTimer = BUSTED_SECONDS;
+    this.police.busted = true;
+    this.ui.showBusted(true);
+  }
+
+  /** Баривчилгааны дараа: цагдаагийн хэлтсийн гадаа суллагдана, хайлт арилна. */
+  finishArrest() {
+    this.bustedTimer = 0;
+    if (this.activeVehicle) this.exitVehicle({ force: true });
+    const station = POLICE_STATION;
+    this.player.teleport(station.position, station.facing);
+    this.cameraRig.resetBehind(station.facing);
+    this.wanted.clear();
+    this.police.standDown(true);
+    this.police.busted = false;
+    this.ui.showBusted(false);
+    this.ui.toast(t('police.released'));
   }
 
   enterVehicle(vehicle) {
+    if (vehicle.police) {
+      // Цагдаагийн машин хулгайлах — хүнд хэрэг
+      this.police.releaseVehicle(vehicle);
+      this.reportCrime('policeCarTheft');
+    }
     this.activeVehicle = vehicle;
     this.enterCandidate = null;
-    this.ui.setEnterPrompt(false);
+    this.ui.setPrompt(null);
     this.player.setPhysicsEnabled(false); // Машинтай мөргөлдөхгүй
     this.player.setVisible(true);
     vehicle.attachDriver(this.player.model);
@@ -425,7 +553,10 @@ export class Game {
   }
 
   respawn() {
+    this.missions.fail('abandoned');
     if (this.activeVehicle) this.exitVehicle({ force: true });
+    this.wanted.clear();
+    this.police.standDown(true);
     this.player.respawn();
     this.cameraRig.resetBehind(this.player.facing);
     this.ui.toast(t('hud.respawned'));

@@ -73,6 +73,12 @@ export class Vehicle {
     this.flipTimer = 0;
     this.surfaceGrip = 1; // Үе шат 7: мөстэй замд < 1 болно
     this.onRecovered = null; // Хөмөрснөөс эргүүлж тавигдахад дуудна
+    // Цагдаа (Үе шат 5): ai — компьютер жолоодож байна (hasDriver-тэй хамт), siren — анивчдаг гэрэл
+    this.police = Boolean(def.police);
+    this.ai = false;
+    this.siren = false;
+    this.sirenTime = Math.random();
+    this.disposed = false;
 
     // Interpolation-ий төлөв
     this.prevPosition = new THREE.Vector3();
@@ -201,6 +207,9 @@ export class Vehicle {
   fixedUpdate(dt) {
     const { def, controller } = this;
     const w = def.wheels;
+    // Rapier 0.21: тоглоомын явцад (цагдаа, булаасан машин) үүсгэсэн машины биеийг эхний алхамд
+    // "идэвхгүй" (disabled) болгох нь хөтөч дээр ажиглагдсан — дахин идэвхжүүлэхэд хэвийн ажиллана.
+    if (!this.body.isEnabled()) this.body.setEnabled(true);
     const input = this.hasDriver ? this.input : IDLE_INPUT;
     const speed = controller.currentVehicleSpeed();
     this.speed = speed;
@@ -295,6 +304,10 @@ export class Vehicle {
     this.model.updateWheels(this.controller);
     this.model.setSteeringWheel(this.steerAngle);
     this.model.setBrakeLights(this.braking);
+    if (this.police) {
+      this.sirenTime += dt;
+      this.model.setSiren(this.siren, this.sirenTime);
+    }
     this.updateDriverTransition(dt);
   }
 
@@ -336,6 +349,7 @@ export class Vehicle {
     world.removeVehicleController(this.controller);
     world.removeRigidBody(this.body); // Хавсарсан collider-ууд хамт устна
     this.model.dispose();
+    this.disposed = true;
   }
 
   // ---------- Жолооч ----------

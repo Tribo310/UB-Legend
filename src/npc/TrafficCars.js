@@ -31,11 +31,18 @@ const TYPES = [
   { id: 'taxi', weight: 0.14, colors: [0xf2c230] },
   { id: 'suv', weight: 0.2, colors: [0x1f2328, 0xe9e9e6, 0x6b7076, 0x2b3f2e, 0x5a4632] },
   { id: 'minibus', weight: 0.16, colors: [0xf1f1ee, 0x2f6fb5, 0xe2b43c, 0x9aa3ab] },
+  // Цагдаагийн эргүүл: хэрэг үйлдвэл ойрын эргүүл шууд хөөцөлдөж эхэлнэ (police/PoliceManager.js)
+  { id: 'police', weight: 0.03, max: 2, colors: [0xf2f4f6] },
 ];
+const TOTAL_WEIGHT = TYPES.reduce((sum, type) => sum + type.weight, 0);
 // IDM: хамгийн их хурдатгал, тав тухтай тоормос (м/с²), зогсоход үлдээх зай (м), цагийн завсар (с)
 const IDM = Object.freeze({ accel: 2.2, brake: 3.2, minGap: 2.2, headway: 1.1, maxBrake: 9 });
 const STOP_MARGIN = 0.6; // Зогсох шугамаас хэдэн метрийн өмнө зогсох вэ
 const LANE_TYPE_WEIGHT = Object.freeze({ avenue: 3, street: 1.4, dirt: 0.35 });
+// Даалгаврын машин хүлээж байхдаа эгнээний төвөөс хашлага руу (зогсоол) хэр шилжих вэ (м)
+const PARKED_LATERAL = 2.6;
+// Анивчдаг гэрэлтэй цагдаа араас ирэхэд баруун тийш хэр зайлах вэ (м)
+const PULL_OVER = Object.freeze({ avenue: 1.4, street: 1.9, dirt: 1.0 });
 
 const UP = new THREE.Vector3(0, 1, 0);
 const matrix = new THREE.Matrix4();
@@ -55,6 +62,11 @@ function idmAcceleration(v, v0, gap, dv) {
 
 function wrapAngle(angle) {
   return Math.atan2(Math.sin(angle), Math.cos(angle));
+}
+
+function moveTowards(current, target, maxDelta) {
+  if (Math.abs(target - current) <= maxDelta) return target;
+  return current + Math.sign(target - current) * maxDelta;
 }
 
 /**
@@ -94,7 +106,7 @@ export class TrafficCars {
     this.visuals = new Map(TYPES.map((type) => [type.id, createCarVisual(scene, type.id, SETTINGS.capacity)]));
     this.bodyPool = new Map(TYPES.map((type) => [type.id, []]));
     this.reservedNodes = new Set(); // Ээлжийн уулзварууд — хэн нэгэн "захиалсан"
-    /** Үйл явдал: (car, kind) — 'honk' (тоглогч зам хаасан), 'bumped' (тоглогч мөргөсөн) */
+    /** Үйл явдал: (car, kind, vehicle?, impact?) — 'honk' (тоглогч зам хаасан), 'bumped' (физик машин мөргөсөн) */
     this.onEvent = null;
   }
 
@@ -142,7 +154,7 @@ export class TrafficCars {
   }
 
   pickType() {
-    let roll = Math.random();
+    let roll = Math.random() * TOTAL_WEIGHT;
     for (const type of TYPES) {
       roll -= type.weight;
       if (roll <= 0) return type;
@@ -150,12 +162,12 @@ export class TrafficCars {
     return TYPES[0];
   }
 
-  spawn(lane, s) {
-    const type = this.pickType();
+  spawn(lane, s, forcedType = null) {
+    const type = forcedType ?? this.pickType();
     const visual = this.visuals.get(type.id);
     let sameType = 0;
     for (const other of this.cars) if (other.type === type.id) sameType++;
-    if (sameType >= visual.capacity) return null;
+    if (sameType >= (type.max ?? visual.capacity)) return null;
     const queued = lane.cars.some((other) => other.s > s && other.s - s < 30);
     const car = {
       id: this.nextId++,
@@ -174,6 +186,9 @@ export class TrafficCars {
       blockedTimer: 0,
       stuckTimer: 0,
       eventCooldown: 0,
+      lateral: 0, // Замаас баруун тийш шилжилт (цагдаад зам тавих)
+      pullOverTimer: 0,
+      sirenCheck: Math.random() * 0.25,
       position: new THREE.Vector3(),
       heading: new THREE.Vector3(0, 0, 1),
       yaw: 0,
@@ -187,7 +202,7 @@ export class TrafficCars {
     // Орон зайн хэшид бүртгэгдэх мэдээлэл (бусад машин, явган хүн үүнийг "хардаг")
     car.entry = { kind: 'car', ref: car, x: 0, z: 0, hx: 0, hz: 1, vx: 0, vz: 0, halfLength: car.halfLength, halfWidth: car.halfWidth };
     lane.cars.push(car);
-    car.next = this.chooseNext(lane);
+    car.next = this.chooseNext(lane, car);
     this.updatePose(car);
     this.syncEntry(car);
     car.prevPosition.copy(car.position);
@@ -257,7 +272,9 @@ export class TrafficCars {
   }
 
   /** Дараагийн уулзварт аль зүг явахаа сонгоно (шулуун илүү, шороон зам руу ховор). */
-  chooseNext(lane) {
+  chooseNext(lane, car = null) {
+    const planned = car?.plan?.get(lane);
+    if (planned) return planned;
     const options = lane.connectors;
     if (options.length === 0) return null;
     let total = 0;
@@ -297,10 +314,29 @@ export class TrafficCars {
     car.prevYaw = car.yaw;
     car.eventCooldown = Math.max(0, car.eventCooldown - dt);
     const segment = car.segment;
+    if (car.hold) {
+      // Даалгаврын машин явган замын хашлагын дэргэд зогсож хүлээнэ (эгнээг хаахгүй)
+      car.speed = 0;
+      car.lateral = moveTowards(car.lateral, PARKED_LATERAL, 3 * dt);
+      this.updatePose(car);
+      this.syncEntry(car);
+      return;
+    }
 
     // 1) Хүссэн хурд: эгнээний хязгаар × жолоочийн зан; эргэлтийн өмнө удаашрана
-    let v0 = segment.speed * car.speedFactor;
+    let v0 = Math.min(segment.speed * car.speedFactor, car.maxSpeed ?? Infinity);
     if (segment.kind === 'lane' && car.next) v0 = Math.min(v0, car.next.speed + (segment.length - car.s) * 0.45);
+
+    // Анивчдаг гэрэлтэй цагдаа араас ирвэл баруун тийш зайлж, бараг зогсоно
+    car.sirenCheck -= dt;
+    if (car.sirenCheck <= 0) {
+      car.sirenCheck = 0.25;
+      if (this.sirenBehind(car)) car.pullOverTimer = 2.5;
+    }
+    car.pullOverTimer -= dt;
+    const pulling = car.pullOverTimer > 0 && segment.kind === 'lane';
+    if (pulling) v0 = Math.min(v0, 1.5);
+    car.lateral = moveTowards(car.lateral, pulling ? PULL_OVER[segment.type] : 0, 1.5 * dt);
 
     // 2) Урд талын саад (машин, тоглогч, явган хүн) ба зогсох шугам
     const ahead = this.findAhead(car);
@@ -318,6 +354,16 @@ export class TrafficCars {
       }
     }
 
+    // Скрипттэй машин зорьсон цэг дээрээ зогсоно
+    if (car.goalLane === segment) {
+      const goalGap = car.goalS - car.s + IDM.minGap;
+      if (goalGap < gap) {
+        gap = goalGap;
+        leaderSpeed = 0;
+      }
+      if (car.goalS - car.s < 2.5 && car.speed < 0.3) car.arrived = true;
+    }
+
     // 3) IDM → хурд (мөргөсний дараа жолооч хэсэг зогсож загнана)
     if (car.waitTimer > 0) {
       car.waitTimer -= dt;
@@ -328,8 +374,13 @@ export class TrafficCars {
     }
     if (ahead.gap < 0.3) car.speed = 0; // Шууд урд нь саад — яаралтай зогсолт
 
-    // Тоглогч зам хаавал дуут дохио өгнө
+    // Эсрэгээс нүүр тулж ирсэн физик машин (цагдаа, даалгаврын машин) — баруун тийш зай тавина
     const blocker = ahead.entry;
+    if (blocker?.kind === 'playerCar' && ahead.gap < 12 && blocker.hx * car.heading.x + blocker.hz * car.heading.z < -0.3) {
+      car.pullOverTimer = Math.max(car.pullOverTimer, 2);
+    }
+
+    // Тоглогч зам хаавал дуут дохио өгнө
     const blockedByPlayer =
       blocker !== null && ahead.gap < 7 && (blocker.kind === 'player' || (blocker.kind === 'playerCar' && blocker.driven));
     if (car.speed < 0.3 && blockedByPlayer) {
@@ -383,16 +434,33 @@ export class TrafficCars {
     const lane = segment.to;
     car.segment = lane;
     lane.cars.push(car);
-    car.next = this.chooseNext(lane);
+    car.next = this.chooseNext(lane, car);
     return true;
   }
 
   updatePose(car) {
     car.segment.path.sample(car.s, point, direction);
-    car.position.set(point.x, 0, point.z);
     const length = Math.hypot(direction.x, direction.z) || 1;
     car.heading.set(direction.x / length, 0, direction.z / length);
+    // Баруун тал = (−h.z, h.x)
+    car.position.set(point.x - car.heading.z * car.lateral, 0, point.z + car.heading.x * car.lateral);
     car.yaw = Math.atan2(car.heading.x, car.heading.z);
+  }
+
+  /** Ард нь (30 м дотор) анивчдаг гэрэлтэй цагдаагийн машин байна уу. */
+  sirenBehind(car) {
+    const p = car.position;
+    const h = car.heading;
+    let found = false;
+    this.hash.query(p.x, p.z, 30, (e) => {
+      if (found || !e.siren) return;
+      const dx = e.x - p.x;
+      const dz = e.z - p.z;
+      const forward = dx * h.x + dz * h.z;
+      if (forward > -3 || forward < -30 || Math.abs(-dx * h.z + dz * h.x) > 6) return;
+      found = true;
+    });
+    return found;
   }
 
   syncEntry(car) {
@@ -547,7 +615,7 @@ export class TrafficCars {
       if (rvx * rvx + rvz * rvz < 2.5 * 2.5) continue;
       car.waitTimer = 2.4;
       car.eventCooldown = 6;
-      this.onEvent?.(car, 'bumped');
+      this.onEvent?.(car, 'bumped', vehicle, Math.sqrt(rvx * rvx + rvz * rvz));
       return;
     }
   }
@@ -567,6 +635,7 @@ export class TrafficCars {
     }
     for (let i = this.cars.length - 1; i >= 0; i--) {
       const car = this.cars[i];
+      if (car.scripted) continue; // Даалгаврын машин — даалгавар өөрөө удирдана
       const dx = car.position.x - focus.x;
       const dz = car.position.z - focus.z;
       const distance = Math.hypot(dx, dz);
@@ -612,6 +681,104 @@ export class TrafficCars {
     }
   }
 
+  // ---------- Даалгаврын (скрипттэй) машин ----------
+
+  /** Цэгт хамгийн ойр эгнээ (чиглэл өгвөл тэр зүг рүү явдаг) ба түүн дээрх байрлал. */
+  nearestLane(point, heading = null) {
+    let best = null;
+    for (const lane of this.network.lanes) {
+      if (heading && lane.heading.x * heading.x + lane.heading.z * heading.z < 0.7) continue;
+      const [a, b] = lane.path.points;
+      const ex = b.x - a.x;
+      const ez = b.z - a.z;
+      const t = clamp(((point.x - a.x) * ex + (point.z - a.z) * ez) / (lane.length * lane.length), 0, 1);
+      const d = Math.hypot(a.x + ex * t - point.x, a.z + ez * t - point.z);
+      if (!best || d < best.distance) best = { lane, s: t * lane.length, distance: d };
+    }
+    return best;
+  }
+
+  /** Эгнээнээс эгнээ рүү хамгийн богино зам (Dijkstra) — эгнээ бүрт аль холбогчоор гарах вэ. */
+  planLanes(startLane, goalLane) {
+    const cost = new Map([[startLane, 0]]);
+    const via = new Map();
+    const open = [startLane];
+    const done = new Set();
+    while (open.length > 0) {
+      let index = 0;
+      for (let i = 1; i < open.length; i++) if (cost.get(open[i]) < cost.get(open[index])) index = i;
+      const lane = open.splice(index, 1)[0];
+      if (lane === goalLane) break;
+      if (done.has(lane)) continue;
+      done.add(lane);
+      for (const connector of lane.connectors) {
+        const next = cost.get(lane) + lane.length + connector.length * (connector.turn === 'uturn' ? 6 : 1);
+        if (next < (cost.get(connector.to) ?? Infinity)) {
+          cost.set(connector.to, next);
+          via.set(connector.to, connector);
+          open.push(connector.to);
+        }
+      }
+    }
+    if (goalLane !== startLane && !via.has(goalLane)) return null;
+    const plan = new Map();
+    for (let lane = goalLane; lane !== startLane; lane = via.get(lane).from) plan.set(via.get(lane).from, via.get(lane));
+    return plan;
+  }
+
+  /**
+   * Даалгаврын машин: хашлагын дэргэд зогсож хүлээнэ (hold), `drive()` дуудахад замын дүрмээр
+   * (эгнээ, гэрлэн дохио) зорилт руу явж, тэнд зогсоно. Хол явсан ч устахгүй.
+   * @param {{type: string, color: number, position: {x:number, z:number}, yaw: number}} spec
+   */
+  spawnScripted(spec) {
+    const heading = { x: Math.sin(spec.yaw), z: Math.cos(spec.yaw) };
+    const start = this.nearestLane(spec.position, heading);
+    if (!start) return null;
+    const type = TYPES.find((t) => t.id === spec.type) ?? TYPES[0];
+    const car = this.spawn(start.lane, start.s, type);
+    if (!car) return null;
+    car.color = spec.color ?? car.color;
+    car.speedFactor = 1;
+    car.scripted = true;
+    car.hold = true;
+    car.lateral = PARKED_LATERAL;
+    // Хүлээж байхдаа эгнээнд "байхгүй" — ард нь ирсэн машинууд хажуугаар нь өнгөрнө
+    const index = start.lane.cars.indexOf(car);
+    if (index >= 0) start.lane.cars.splice(index, 1);
+    this.updatePose(car);
+    this.syncEntry(car);
+    car.prevPosition.copy(car.position);
+    car.renderPosition.copy(car.position);
+    return car;
+  }
+
+  /** Скрипттэй машиныг зорилт руу хөдөлгөнө. @returns {boolean} маршрут олдсон эсэх */
+  driveScripted(car, to, maxSpeed = 11) {
+    const goal = this.nearestLane(to);
+    const plan = goal && this.planLanes(car.segment, goal.lane);
+    if (!plan) return false;
+    car.plan = plan;
+    car.goalLane = goal.lane;
+    car.goalS = Math.min(goal.s, goal.lane.length - 3);
+    car.next = this.chooseNext(car.segment, car);
+    car.maxSpeed = maxSpeed;
+    if (car.hold) {
+      car.hold = false;
+      if (car.segment.kind === 'lane' && !car.segment.cars.includes(car)) car.segment.cars.push(car);
+    }
+    return true;
+  }
+
+  /** Даалгавар дууссан: скрипттэй машин энгийн замын машин болно. */
+  releaseScripted(car) {
+    car.scripted = false;
+    car.plan = null;
+    car.goalLane = null;
+    car.hold = false;
+    if (car.segment.kind === 'lane' && !car.segment.cars.includes(car)) car.segment.cars.push(car);
+  }
+
   // ---------- Машин булаах (F) ----------
 
   /** Тоглогчийн ойролцоо, удаан явж / зогсож буй NPC машин (хаалганы дэргэд зогсвол). */
@@ -619,7 +786,7 @@ export class TrafficCars {
     let best = null;
     let bestDistance = Infinity;
     for (const car of this.cars) {
-      if (car.speed > 4) continue;
+      if (car.speed > 4 || car.scripted) continue;
       const dx = position.x - car.position.x;
       const dz = position.z - car.position.z;
       if (Math.abs(dx) > 6 || Math.abs(dz) > 6) continue;

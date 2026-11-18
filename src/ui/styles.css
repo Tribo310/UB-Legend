@@ -491,9 +491,296 @@ kbd {
   border-top-color: rgba(250, 246, 236, 0.95);
 }
 
+/* Мөнгө: баруун дээд буланд */
+.money {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  color: #e9f5e0;
+  font: 800 21px / 1 var(--font);
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+}
+
+/* Даалгаврын зорилт (дээд төв) */
+.objective {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 8px 18px 9px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(10, 16, 26, 0.68);
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.objective-title {
+  color: var(--gold-2);
+  font: 700 11px / 1.3 var(--font);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.objective-text {
+  color: var(--text);
+  font: 650 15px / 1.35 var(--font);
+}
+
+.objective-timer {
+  color: #fff;
+  font: 800 19px / 1.1 var(--mono);
+}
+
+.objective-timer.is-urgent {
+  color: #ff6b5c;
+}
+
+.objective-info {
+  color: var(--muted);
+  font: 600 13px / 1.3 var(--font);
+}
+
+.objective-info.is-warning {
+  color: #ff8a7a;
+  font-weight: 750;
+}
+
+.objective-meter {
+  width: 180px;
+  height: 5px;
+  margin-top: 2px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.objective-meter span {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.objective-meter.is-danger span {
+  background: #ff5546;
+}
+
+/* Харилцан яриа (хадмал) */
+.dialogue {
+  position: absolute;
+  left: 50%;
+  bottom: 156px;
+  max-width: min(720px, calc(100vw - 32px));
+  padding: 9px 16px 10px;
+  border-radius: 10px;
+  background: rgba(8, 12, 20, 0.74);
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.dialogue-speaker {
+  margin-right: 8px;
+  font: 800 13px / 1.2 var(--font);
+  letter-spacing: 0.04em;
+}
+
+.dialogue-text {
+  color: var(--text);
+  font: 600 16px / 1.45 var(--font);
+}
+
+/* Даалгаврын карт: эхлэх үед гарчиг, дуусахад үр дүн (дээд, доод талдаа алхан хээ) */
+.mission-card {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: min(420px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  padding: 22px 30px 20px;
+  background: radial-gradient(ellipse at center, rgba(12, 19, 30, 0.88), rgba(12, 19, 30, 0.55));
+  text-align: center;
+  transform: translateX(-50%);
+  animation: card-in 0.45s ease-out;
+}
+
+.mission-card::before,
+.mission-card::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background-image: var(--meander);
+  background-size: 19px 10px;
+  opacity: 0.85;
+}
+
+.mission-card::before {
+  top: 0;
+}
+
+.mission-card::after {
+  bottom: 0;
+}
+
+.mission-card-label {
+  color: var(--gold);
+  font: 750 12px / 1.3 var(--font);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.mission-card-title {
+  color: var(--text);
+  font: 900 clamp(26px, 4.6vw, 46px) / 1.05 var(--font);
+  letter-spacing: 0.02em;
+}
+
+.mission-card-sub {
+  color: var(--muted);
+  font: 600 15px / 1.4 var(--font);
+}
+
+.mission-card.is-complete .mission-card-title {
+  color: var(--gold-2);
+}
+
+.mission-card.is-failed .mission-card-title {
+  color: #ff5546;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+}
+
+/* Хайлтын түвшин: мөнгөний доор 5 од (өлзий хээний алтан өнгө) */
+.wanted {
+  position: absolute;
+  top: 46px;
+  right: 16px;
+  display: flex;
+  gap: 4px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(10, 16, 26, 0.6);
+  transform-origin: 100% 0;
+}
+
+.wanted-star {
+  width: 22px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.16);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+.wanted-star.is-active {
+  background: linear-gradient(180deg, var(--gold-2), var(--gold));
+}
+
+/* Цагдаа харахгүй байна — хайж байна: одод анивчина */
+.wanted.is-searching .wanted-star.is-active {
+  animation: wanted-blink 0.9s ease-in-out infinite;
+}
+
+.wanted.is-raised {
+  animation: wanted-pop 0.45s ease-out;
+}
+
+@keyframes wanted-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes wanted-pop {
+  from {
+    transform: scale(1.35);
+  }
+}
+
+/* Баривчлагдаж байна — зурвас дүүрвэл баривчлагдана */
+.arrest {
+  position: absolute;
+  left: 50%;
+  bottom: 112px;
+  min-width: 240px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 90, 80, 0.5);
+  border-radius: 10px;
+  background: rgba(60, 10, 10, 0.78);
+  color: #ffe1dc;
+  font: 700 13px/1.3 var(--font);
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.arrest-bar {
+  height: 6px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.arrest-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #ff7a5c, #ff3b30);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.busted {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: radial-gradient(ellipse at center, rgba(20, 8, 8, 0.35), rgba(10, 4, 4, 0.8));
+  text-align: center;
+  animation: busted-in 0.6s ease-out;
+}
+
+.busted-title {
+  color: #ff5546;
+  font: 900 clamp(34px, 7vw, 76px) / 1 var(--font);
+  letter-spacing: 0.08em;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+}
+
+.busted-subtitle {
+  padding: 0 16px;
+  color: var(--text);
+  font: 600 clamp(14px, 1.8vw, 19px) / 1.4 var(--font);
+  opacity: 0.9;
+}
+
+@keyframes busted-in {
+  from {
+    opacity: 0;
+  }
+}
+
 .hud-debug {
   position: absolute;
-  top: 12px;
+  top: 92px;
   right: 12px;
   margin: 0;
   padding: 8px 11px;

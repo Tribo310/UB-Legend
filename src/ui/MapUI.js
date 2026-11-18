@@ -184,6 +184,16 @@ export class MapUI {
     ctx.translate(-(state.position.x + OFFSET), -(state.position.z + OFFSET));
     ctx.drawImage(this.mapCanvas, 0, 0);
     this.drawRoute(ctx, 5 / zoom);
+    // Цагдаа хайж буй хүрээ (сүүлд харагдсан газар)
+    if (state.search) {
+      ctx.fillStyle = 'rgba(214, 64, 64, 0.16)';
+      ctx.strokeStyle = 'rgba(240, 90, 90, 0.55)';
+      ctx.lineWidth = 2 / zoom;
+      ctx.beginPath();
+      ctx.arc(state.search.x + OFFSET, state.search.z + OFFSET, state.search.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
     for (const vehicle of state.vehicles) {
       ctx.save();
       ctx.translate(vehicle.x + OFFSET, vehicle.z + OFFSET);
@@ -193,6 +203,62 @@ export class MapUI {
       ctx.restore();
     }
     ctx.restore();
+
+    // Даалгаврын эхлэх цэг: дүрийн өнгөтэй дугуй, үсэгтэй (хүрээнээс гадуур бол ирмэг дээр)
+    if (state.missions?.length) {
+      const cos = Math.cos(state.cameraYaw);
+      const sin = Math.sin(state.cameraYaw);
+      const limit = r - 12 * this.dpr;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `800 ${10 * this.dpr}px "Montserrat Variable", Arial, sans-serif`;
+      for (const mission of state.missions) {
+        const dx = mission.x - state.position.x;
+        const dz = mission.z - state.position.z;
+        let sx = (dx * cos - dz * sin) * zoom;
+        let sy = (dx * sin + dz * cos) * zoom;
+        const length = Math.hypot(sx, sy);
+        if (length > limit) {
+          sx = (sx / length) * limit;
+          sy = (sy / length) * limit;
+        }
+        ctx.fillStyle = '#0d141f';
+        ctx.beginPath();
+        ctx.arc(r + sx, r + sy, 9 * this.dpr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = mission.color;
+        ctx.lineWidth = 2 * this.dpr;
+        ctx.stroke();
+        ctx.fillStyle = mission.color;
+        ctx.fillText(mission.letter, r + sx, r + sy + 0.5 * this.dpr);
+      }
+    }
+
+    // Цагдаа: улаан / цэнхэр анивчдаг цэг (хүрээнээс гадуур бол ирмэг дээр)
+    if (state.police?.length) {
+      const flash = Math.floor(performance.now() / 260) % 2 === 0;
+      const cos = Math.cos(state.cameraYaw);
+      const sin = Math.sin(state.cameraYaw);
+      const limit = r - 6 * this.dpr;
+      for (const unit of state.police) {
+        const dx = unit.x - state.position.x;
+        const dz = unit.z - state.position.z;
+        let sx = (dx * cos - dz * sin) * zoom;
+        let sy = (dx * sin + dz * cos) * zoom;
+        const length = Math.hypot(sx, sy);
+        if (length > limit) {
+          sx = (sx / length) * limit;
+          sy = (sy / length) * limit;
+        }
+        ctx.fillStyle = flash ? '#ff4a3d' : '#3d7bff';
+        ctx.strokeStyle = '#0d141f';
+        ctx.lineWidth = 1.5 * this.dpr;
+        ctx.beginPath();
+        ctx.arc(r + sx, r + sy, (unit.officer ? 3 : 4.5) * this.dpr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
 
     // Зорих цэг: харагдах хүрээнээс гадуур бол хүрээний ирмэг дээр
     const waypoint = this.navigator.waypoint;

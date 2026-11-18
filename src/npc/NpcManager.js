@@ -29,11 +29,16 @@ export class NpcManager {
     const shared = { scene, physics, network: this.network, signals: this.signals, hash: this.hash };
     this.cars = new TrafficCars(shared);
     this.peds = new Pedestrians(shared);
-    this.cars.onEvent = (car, kind) => this.say(car.renderPosition, car.height + 0.55, kind === 'honk' ? 'honk' : 'carBump');
+    this.cars.onEvent = (car, kind, vehicle, impact) => {
+      this.say(car.renderPosition, car.height + 0.55, kind === 'honk' ? 'honk' : 'carBump');
+      if (kind === 'bumped') this.onCarBumped?.(vehicle.ref, impact);
+    };
     this.peds.onSpeak = (ped, key) => this.say(ped.renderPosition, 1.95 * ped.scale + 0.25, key);
     this.peds.onKnocked = (ped, vehicle) => this.handleKnock(ped, vehicle);
-    /** (ped, vehicle) — тоглогч явган хүн мөргөсөн (Үе шат 5: эрэн сурвалжлалт) */
+    /** (ped, vehicle) — физик машин (тоглогчийн, цагдаагийн) явган хүн мөргөсөн */
     this.onPedestrianHit = null;
+    /** (vehicle, impact м/с) — физик машин NPC машин мөргөсөн */
+    this.onCarBumped = null;
 
     this.playerEntry = { kind: 'player', ref: null, x: 0, z: 0, hx: 0, hz: 1, vx: 0, vz: 0, halfLength: 0.35, halfWidth: 0.35 };
     this.vehicleEntries = new WeakMap();
@@ -86,7 +91,20 @@ export class NpcManager {
     let entry = this.vehicleEntries.get(vehicle);
     if (!entry) {
       const { length, width } = vehicle.def.size;
-      entry = { kind: 'playerCar', ref: vehicle, x: 0, z: 0, hx: 0, hz: 1, vx: 0, vz: 0, driven: false, halfLength: length / 2, halfWidth: width / 2 };
+      entry = {
+        kind: 'playerCar',
+        ref: vehicle,
+        x: 0,
+        z: 0,
+        hx: 0,
+        hz: 1,
+        vx: 0,
+        vz: 0,
+        driven: false, // Тоглогч жолоодож байна
+        siren: false, // Анивчдаг гэрэлтэй цагдаа — NPC машин зам тавина
+        halfLength: length / 2,
+        halfWidth: width / 2,
+      };
       this.vehicleEntries.set(vehicle, entry);
     }
     const position = vehicle.currPosition;
@@ -98,7 +116,8 @@ export class NpcManager {
     entry.hz = Math.cos(yaw);
     entry.vx = velocity.x;
     entry.vz = velocity.z;
-    entry.driven = vehicle.hasDriver;
+    entry.driven = vehicle.hasDriver && !vehicle.ai;
+    entry.siren = vehicle.siren;
     return entry;
   }
 

@@ -13,15 +13,23 @@ export class Navigator {
     /** @type {{x:number, z:number}[]|null} */
     this.route = null;
     this.timer = 0;
+    this.mission = false; // Даалгаврын зорилт — хүрэхэд автоматаар арилгахгүй (даалгавар өөрөө шийднэ)
   }
 
-  setWaypoint(point, from) {
+  /**
+   * @param {{x:number, z:number}} point
+   * @param {{x:number, z:number}} from
+   * @param {boolean} [mission] Даалгаврын зорилт эсэх
+   */
+  setWaypoint(point, from, mission = false) {
+    this.mission = mission;
     this.waypoint = { x: point.x, z: point.z };
     this.route = this.graph.route(from, this.waypoint);
     this.timer = RECALCULATE_SECONDS;
   }
 
   clear() {
+    this.mission = false;
     this.waypoint = null;
     this.route = null;
   }
@@ -32,7 +40,7 @@ export class Navigator {
    */
   update(dt, position) {
     if (!this.waypoint) return false;
-    if (Math.hypot(position.x - this.waypoint.x, position.z - this.waypoint.z) < CONFIG.map.arriveDistance) {
+    if (!this.mission && Math.hypot(position.x - this.waypoint.x, position.z - this.waypoint.z) < CONFIG.map.arriveDistance) {
       this.clear();
       return true;
     }

@@ -92,6 +92,13 @@ export class Player {
     if (input.wasPressed('jump')) this.jumpBufferTimer = CONFIG.player.jumpBuffer;
   }
 
+  /** Оролтыг цуцлана (баривчлагдсан үед г.м.) — дүр зогсоно. */
+  clearInput() {
+    this.moveInput.set(0, 0);
+    this.running = false;
+    this.jumpBufferTimer = 0;
+  }
+
   /** Тогтмол физик алхам (1/60 сек). */
   fixedUpdate(dt) {
     const cfg = CONFIG.player;

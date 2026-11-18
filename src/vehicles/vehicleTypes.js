@@ -79,6 +79,26 @@ VEHICLE_TYPES.taxi = {
   colors: { ...VEHICLE_TYPES.hybrid.colors, body: 0xf2c230 },
 };
 
+// Цагдаагийн эргүүлийн машин — хибрид дээр суурилсан ч хүчирхэг хөдөлгүүр, сайн зам баригчтай
+// (хөөцөлдөхөд тоглогчийг гүйцнэ). Дээвэр дээрээ улаан-цэнхэр анивчдаг гэрэлтэй.
+// Зохиомол хотын цагдаа — бодит байгууллагын бэлгэ тэмдэг, хээ ашиглаагүй.
+VEHICLE_TYPES.police = {
+  ...VEHICLE_TYPES.hybrid,
+  nameKey: 'vehicles.police.name',
+  descriptionKey: 'vehicles.police.description',
+  stats: { speed: 4, handling: 4, durability: 3 },
+  rightHandDrive: false,
+  police: true,
+  plate: '1020 ЦГА',
+  colors: { ...VEHICLE_TYPES.hybrid.colors, body: 0xf2f4f6, stripe: 0x1f4f9c },
+  mass: 1450,
+  maxSpeedKmh: 190,
+  engineForce: 4700,
+  brakeImpulse: 62,
+  handbrakeImpulse: 90,
+  wheels: { ...VEHICLE_TYPES.hybrid.wheels, frictionSlip: 1.3, sideFriction: 1.1 },
+};
+
 // Том жийп — баячуудын машин: хүчтэй, бат бөх, 4 дугуй хөтлөгчтэй, гэхдээ хүнд, өндөр хүндийн төвтэй
 VEHICLE_TYPES.suv = {
   nameKey: 'vehicles.suv.name',
@@ -120,6 +140,22 @@ VEHICLE_TYPES.suv = {
     sideFriction: 1.0,
     handbrakeSideFriction: 0.35,
   },
+};
+
+// Цагдаагийн жийп — хайлтын өндөр түвшинд (4–5 од): хүнд, бат бөх, мөргөж зам хаадаг
+VEHICLE_TYPES.policeSuv = {
+  ...VEHICLE_TYPES.suv,
+  nameKey: 'vehicles.policeSuv.name',
+  descriptionKey: 'vehicles.policeSuv.description',
+  stats: { speed: 4, handling: 3, durability: 5 },
+  police: true,
+  plate: '1021 ЦГА',
+  colors: { ...VEHICLE_TYPES.suv.colors, body: 0x22324f, stripe: 0xf2f4f6 },
+  mass: 2400,
+  maxSpeedKmh: 185,
+  engineForce: 4300,
+  brakeImpulse: 98,
+  wheels: { ...VEHICLE_TYPES.suv.wheels, frictionSlip: 1.3, sideFriction: 1.1 },
 };
 
 // Микро автобус — удаан, том, өндөр тул эргэлтэнд хазайна
